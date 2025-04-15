@@ -1,4 +1,4 @@
-import { createFolder, getFolderById } from '../services/folderService.js';
+import { createFolder, getFolderHierarchy, getFolderById } from '../services/folderService.js';
 
 /**
  * Create a new folder
@@ -66,7 +66,26 @@ const getFolderByIdHandler = async (req, res) => {
   }
 };
 
+/**
+ * Get all folders and subfolders
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getFolderHierarchyHandler = async (req, res) => {
+  try {
+    const folders = await getFolderHierarchy();
+    res.json(folders);
+  } catch (error) {
+    console.error('Error getting folders:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An unexpected error occurred while getting the folders',
+      code: 'INTERNAL_SERVER_ERROR'
+    });
+  }
+}
 export {
   createFolderHandler,
-  getFolderByIdHandler
+  getFolderByIdHandler,
+  getFolderHierarchyHandler,
 };

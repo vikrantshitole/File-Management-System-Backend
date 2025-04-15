@@ -1,4 +1,5 @@
 import db from '../config/database.js';
+import { buildFolderTree } from '../utils/index.js';
 
 /**
  * Create a new folder
@@ -8,7 +9,7 @@ import db from '../config/database.js';
  * @returns {Promise<Object>} Created folder
  */
 const createFolder = async (folderData) => {
-  const { name, parent_id } = folderData;
+  const { name, parent_id, description } = folderData;
 
   // If parent_id is provided, check if it exists
   if (parent_id) {
@@ -37,7 +38,8 @@ const createFolder = async (folderData) => {
   const [folderId] = await db('folders')
     .insert({
       name,
-      parent_id
+      parent_id,
+      description
     });
     
   // Fetch the created folder
@@ -65,7 +67,19 @@ const getFolderById = async (id) => {
   return folder;
 };
 
+/**
+ * Get all folders and subfolders
+ * @returns {Promise<Array>} List of folders
+ */
+const getFolderHierarchy = async () => {
+  const folders = await db('folders')
+    .select('*');
+    const folderTree = buildFolderTree(folders);
+
+  return folderTree;
+}
 export {
   createFolder,
-  getFolderById
+  getFolderById,
+  getFolderHierarchy
 };

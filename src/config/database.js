@@ -1,11 +1,9 @@
 require('dotenv').config();
 
-module.exports = {
-  // Add your database configuration here
-  // Example for MongoDB:
-  // url: process.env.MONGODB_URI || 'mongodb://localhost:27017/file-management',
-  // options: {
-  //   useNewUrlParser: true,
-  //   useUnifiedTopology: true
-  // }
-}; 
+const knex = require('knex');
+const knexfile = require('../../knexfile');
+
+const environment = process.env.NODE_ENV || 'development';
+const config = knexfile[environment];
+
+module.exports = knex(config);

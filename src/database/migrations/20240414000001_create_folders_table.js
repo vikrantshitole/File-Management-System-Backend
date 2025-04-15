@@ -4,7 +4,6 @@ exports.up = async function(knex) {
     table.increments('id').primary();
     table.string('name').notNullable();
     table.integer('parent_id').unsigned().nullable();
-    table.text('path');
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });

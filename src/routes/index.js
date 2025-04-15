@@ -1,12 +1,10 @@
-const express = require('express');
+import express from 'express';
+import folderRoutes from './folderRoutes.js';
+
 const router = express.Router();
 
-// Import route modules here
-// const fileRoutes = require('./file.routes');
-// const userRoutes = require('./user.routes');
+// Folder routes
+router.use('/folders', folderRoutes);
 
-// Use route modules
-// router.use('/files', fileRoutes);
-// router.use('/users', userRoutes);
 
-module.exports = router; 
+export default router; 

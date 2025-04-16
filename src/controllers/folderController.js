@@ -73,7 +73,7 @@ const getFolderByIdHandler = async (req, res) => {
  */
 const getFolderHierarchyHandler = async (req, res) => {
   try {
-    const folders = await getFolderHierarchy();
+    const folders = await getFolderHierarchy(req.query);
     res.json(folders);
   } catch (error) {
     console.error('Error getting folders:', error);

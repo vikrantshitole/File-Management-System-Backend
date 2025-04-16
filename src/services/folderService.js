@@ -69,30 +69,64 @@ const getFolderById = async (id) => {
 
 /**
  * Get paginated root folders with all their subfolders
- * @param {Object} options - Pagination options
+ * @param {Object} options - Pagination and filter options
  * @param {number} [options.page=1] - Page number
  * @param {number} [options.limit=10] - Number of items per page
+ * @param {string} [options.name] - Filter by folder name (partial match)
+ * @param {string} [options.description] - Filter by folder description (partial match)
+ * @param {string} [options.created_at_start] - Filter by creation date range start (YYYY-MM-DD)
+ * @param {string} [options.created_at_end] - Filter by creation date range end (YYYY-MM-DD)
+ * @param {string} [options.sort_by='name'] - Field to sort by (name, created_at, updated_at)
+ * @param {string} [options.sort_order='asc'] - Sort order (asc, desc)
  * @returns {Promise<Object>} Paginated root folders with their complete subfolder hierarchy
  */
 const getFolderHierarchy = async (options = {}) => {
-  const { page = 1, limit = 10 } = options;
+  const { 
+    page = 1, 
+    limit = 10,
+    name,
+    description,
+    created_at_start,
+    created_at_end,
+    sort_by = 'created_at',
+    sort_order = 'desc'
+  } = options;
+  
   const offset = (page - 1) * limit;
+  
+  // Validate sort parameters
+  const validSortFields = ['name', 'created_at', 'updated_at'];
+  const validSortOrders = ['asc', 'desc'];
+  
+  const validatedSortBy = validSortFields.includes(sort_by) ? sort_by : 'name';
+  const validatedSortOrder = validSortOrders.includes(sort_order.toLowerCase()) ? sort_order.toLowerCase() : 'asc';
 
-  // Get paginated root folders and total count in a single query
-  const [rootFoldersResult, totalResult] = await Promise.all([
-    db('folders')
-      .whereNull('parent_id')
-      .orderBy('name', 'asc')
-      .limit(limit)
-      .offset(offset),
-    db('folders')
-      .whereNull('parent_id')
-      .count('* as total')
-      .first()
-  ]);
-
-  // If no root folders, return empty result early
-  if (rootFoldersResult.length === 0) {
+  // Build query for root folders with filters
+  const rootFoldersQuery = db('folders').whereNull('parent_id');
+  
+  // Apply filters if provided
+  if (name) {
+    rootFoldersQuery.where('name', 'like', `%${name}%`);
+  }
+  
+  if (description) {
+    rootFoldersQuery.where('description', 'like', `%${description}%`);
+  }
+  
+  if (created_at_start) {
+    rootFoldersQuery.where('created_at', '>=', created_at_start);
+  }
+  
+  if (created_at_end) {
+    rootFoldersQuery.where('created_at', '<=', created_at_end + ' 23:59:59');
+  }
+  
+  // Get total count first to handle pagination properly
+  const totalResult = await rootFoldersQuery.clone().count('* as total').first();
+  const total = totalResult ? parseInt(totalResult.total) : 0;
+  
+  // If no folders match the filters, return empty result early
+  if (total === 0) {
     return {
       data: [],
       pagination: {
@@ -103,8 +137,26 @@ const getFolderHierarchy = async (options = {}) => {
       }
     };
   }
+  
+  // Get paginated root folders
+  const rootFoldersResult = await rootFoldersQuery
+    .orderBy(validatedSortBy, validatedSortOrder)
+    .limit(limit)
+    .offset(offset);
 
-  const total = parseInt(totalResult.total);
+  // If no root folders on this page, return empty result
+  if (rootFoldersResult.length === 0) {
+    return {
+      data: [],
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
   const rootFolderIds = rootFoldersResult.map(folder => folder.id);
   
   // Get all descendants using an optimized recursive query

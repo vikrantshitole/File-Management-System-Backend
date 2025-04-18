@@ -44,48 +44,48 @@ const createFolderHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getFolderByIdHandler = async (req, res) => {
-  try {
-    const folder = await getFolderById(req.params.id);
-    res.json(folder);
-  } catch (error) {
-    if (error.message === 'Folder not found') {
-      return res.status(404).json({
-        status: 'error',
-        message: error.message,
-        code: 'FOLDER_NOT_FOUND'
-      });
-    }
-
-    console.error('Error getting folder:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'An unexpected error occurred while getting the folder',
-      code: 'INTERNAL_SERVER_ERROR'
-    });
-  }
-};
-
-/**
- * Get all folders and subfolders
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 const getFolderHierarchyHandler = async (req, res) => {
   try {
-    const folders = await getFolderHierarchy(req.query);
-    res.json(folders);
+    const {
+      page = 1,
+      limit = 10,
+      name,
+      description,
+      created_at_start,
+      created_at_end,
+      sort_by,
+      sort_order
+    } = req.query;
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      name,
+      description,
+      created_at_start,
+      created_at_end,
+      sort_by,
+      sort_order
+    };
+
+    const result = await getFolderHierarchy(options);
+
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      counts: result.counts,
+    });
   } catch (error) {
-    console.error('Error getting folders:', error);
+    console.error('Error in getHierarchicalContentHandler:', error);
     res.status(500).json({
-      status: 'error',
-      message: 'An unexpected error occurred while getting the folders',
-      code: 'INTERNAL_SERVER_ERROR'
+      success: false,
+      error: 'Internal server error',
+      message: error.message
     });
   }
 }
 export {
   createFolderHandler,
-  getFolderByIdHandler,
   getFolderHierarchyHandler,
 };

@@ -1,6 +1,6 @@
 import express from 'express';
-import { createFolderHandler, getFolderHierarchyHandler, getFolderByIdHandler } from '../controllers/folderController.js';
-import { validateCreateFolder, validateFolderId } from '../middleware/folderValidation.js';
+import { createFolderHandler, getFolderHierarchyHandler,  } from '../controllers/folderController.js';
+import { validateCreateFolder } from '../middleware/folderValidation.js';
 
 const router = express.Router();
 
@@ -8,7 +8,7 @@ const router = express.Router();
 router.post('/create', validateCreateFolder, createFolderHandler);
 
 // Get a folder by ID
-router.get('/:id', validateFolderId, getFolderByIdHandler);
+// router.get('/:id', validateFolderId, getFolderByIdHandler);
 
 // Get all folders and subfolders
 // This route will return all folders and subfolders in a tree-like structure

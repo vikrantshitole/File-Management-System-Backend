@@ -81,8 +81,8 @@ const getFolderById = async (id) => {
  * @returns {Promise<Object>} Paginated root folders with their complete subfolder hierarchy
  */
 const getFolderHierarchy = async (options = {}) => {
-  const { 
-    page = 1, 
+  const {
+    page = 1,
     limit = 10,
     name,
     description,
@@ -91,9 +91,9 @@ const getFolderHierarchy = async (options = {}) => {
     sort_by = 'created_at',
     sort_order = 'desc'
   } = options;
-  
+
   const offset = (page - 1) * limit;
-  
+
   // Validate sort parameters
   const validSortFields = ['name', 'created_at', 'updated_at'];
   const validSortOrders = ['asc', 'desc'];
@@ -101,181 +101,309 @@ const getFolderHierarchy = async (options = {}) => {
   const validatedSortBy = validSortFields.includes(sort_by) ? sort_by : 'name';
   const validatedSortOrder = validSortOrders.includes(sort_order.toLowerCase()) ? sort_order.toLowerCase() : 'asc';
 
-  // Build query for root folders with filters
-  const rootFoldersQuery = db('folders').whereNull('parent_id');
-  
-  // Apply filters if provided
-  if (name) {
-    rootFoldersQuery.where('name', 'like', `%${name}%`);
-  }
-  
-  if (description) {
-    rootFoldersQuery.where('description', 'like', `%${description}%`);
-  }
-  
-  if (created_at_start) {
-    rootFoldersQuery.where('created_at', '>=', created_at_start);
-  }
-  
-  if (created_at_end) {
-    rootFoldersQuery.where('created_at', '<=', created_at_end + ' 23:59:59');
-  }
-  
-  // Get total count first to handle pagination properly
-  const totalResult = await rootFoldersQuery.clone().count('* as total').first();
-  const total = totalResult ? parseInt(totalResult.total) : 0;
-  
-  // Get total files count
-  const totalFilesResult = await db('files').count('* as total').first();
-  const totalFiles = totalFilesResult ? parseInt(totalFilesResult.total) : 0;
+  try {
+    // Build filter conditions
+    const filterConditions = [];
+    const filterParams = [];
 
-  // Get files count for each folder
-  const folderFilesCount = await db('files')
-    .select('folder_id')
-    .count('* as count')
-    .groupBy('folder_id');
-
-  // Create a map of folder_id to file count
-  const folderFilesMap = new Map();
-  folderFilesCount.forEach(item => {
-    folderFilesMap.set(item.folder_id, parseInt(item.count));
-  });
-
-  // Get total subfolders count for each folder
-  const folderSubfoldersCount = await db('folders')
-    .select('parent_id')
-    .count('* as count')
-    .groupBy('parent_id');
-
-  // Create a map of parent_id to subfolder count
-  const folderSubfoldersMap = new Map();
-  folderSubfoldersCount.forEach(item => {
-    if (item.parent_id) {
-      folderSubfoldersMap.set(item.parent_id, parseInt(item.count));
+    if (name) {
+      filterConditions.push('ft.name LIKE ?');
+      filterParams.push(`%${name}%`);
     }
-  });
-  
-  // If no folders match the filters, return empty result early
-  if (total === 0) {
-    return {
-      data: [],
-      pagination: {
-        total: 0,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: 0
-      },
-      counts: {
-        totalFolders: 0,
-        totalFiles: totalFiles,
-        totalItems: totalFiles
-      }
-    };
-  }
-  
-  // Get paginated root folders
-  const rootFoldersResult = await rootFoldersQuery.select('*',db.raw(`'folder' as type`))
-    .orderBy(validatedSortBy, validatedSortOrder)
-    .limit(limit)
-    .offset(offset);
+    if (description) {
+      filterConditions.push('ft.description LIKE ?');
+      filterParams.push(`%${description}%`);
+    }
+    if (created_at_start) {
+      filterConditions.push('ft.created_at >= ?');
+      filterParams.push(created_at_start);
+    }
+    if (created_at_end) {
+      filterConditions.push('ft.created_at <= ?');
+      filterParams.push(created_at_end);
+    }
 
-  // If no root folders on this page, return empty result
-  if (rootFoldersResult.length === 0) {
+    const whereClause = filterConditions.length > 0 
+      ? `WHERE ${filterConditions.join(' AND ')}` 
+      : '';
+
+    // Get root folders and files with filters
+    const rootQuery = db.raw(`
+      WITH RECURSIVE folder_tree AS (
+        -- Base case: root folders
+        SELECT 
+          id, 
+          name, 
+          parent_id, 
+          description, 
+          created_at, 
+          'folder' as type,
+          1 as level
+        FROM folders 
+        WHERE parent_id IS NULL
+        
+        UNION ALL
+        
+        -- Recursive case: subfolders
+        SELECT 
+          f.id, 
+          f.name, 
+          f.parent_id, 
+          f.description, 
+          f.created_at, 
+          'folder' as type,
+          ft.level + 1
+        FROM folders f
+        INNER JOIN folder_tree ft ON f.parent_id = ft.id
+        WHERE ft.level < 10  -- Limit recursion depth
+      ),
+      
+      -- Get all files with filters
+      all_files AS (
+        SELECT 
+          id,
+          name,
+          folder_id as parent_id,
+          description,
+          created_at,
+          'file' as type,
+          1 as level
+        FROM files
+        ${whereClause.replace('ft.', 'files.')}
+      ),
+      
+      -- Get folder counts
+      folder_counts AS (
+        SELECT 
+          parent_id,
+          COUNT(*) as subfolder_count
+        FROM folders
+        GROUP BY parent_id
+      ),
+      
+      -- Get file counts
+      file_counts AS (
+        SELECT 
+          folder_id,
+          COUNT(*) as file_count
+        FROM files
+        GROUP BY folder_id
+      ),
+      
+      -- Get total counts
+      total_counts AS (
+        SELECT 
+          SUM(CASE WHEN type = 'folder' THEN 1 ELSE 0 END) as total_folders,
+          SUM(CASE WHEN type = 'file' THEN 1 ELSE 0 END) as total_files
+        FROM (
+          SELECT 'folder' as type FROM folder_tree
+          ${whereClause}
+          UNION ALL
+          SELECT 'file' as type FROM files
+          ${whereClause.replace('ft.', 'files.')}
+        ) as combined
+      ),
+      
+      -- Get root level items (for pagination)
+      root_items AS (
+        SELECT 
+          r.id,
+          r.name,
+          r.parent_id,
+          r.description,
+          r.created_at,
+          r.type,
+          r.level,
+          COALESCE(fc.subfolder_count, 0) as subfolder_count,
+          COALESCE(flc.file_count, 0) as file_count,
+          ROW_NUMBER() OVER (ORDER BY ${validatedSortBy} ${validatedSortOrder}) as row_num
+        FROM (
+          SELECT 
+            ft.id,
+            ft.name,
+            ft.parent_id,
+            ft.description,
+            ft.created_at,
+            ft.type,
+            ft.level
+          FROM folder_tree ft 
+          WHERE ft.parent_id IS NULL
+          UNION ALL
+          SELECT 
+            af.id,
+            af.name,
+            af.parent_id,
+            af.description,
+            af.created_at,
+            af.type,
+            af.level
+          FROM all_files af 
+          WHERE af.parent_id IS NULL
+        ) as r
+        LEFT JOIN folder_counts fc ON r.id = fc.parent_id
+        LEFT JOIN file_counts flc ON r.id = flc.folder_id
+        ${whereClause}
+      ),
+      
+      -- Get paginated root items
+      paginated_roots AS (
+        SELECT 
+          id,
+          name,
+          parent_id,
+          description,
+          created_at,
+          type,
+          level,
+          subfolder_count,
+          file_count
+        FROM root_items
+        WHERE row_num > ? AND row_num <= ?
+      ),
+      
+      -- Get all nested items for the paginated roots
+      nested_items AS (
+        -- Get all subfolders for the paginated root folders
+        SELECT 
+          ft.id,
+          ft.name,
+          ft.parent_id,
+          ft.description,
+          ft.created_at,
+          ft.type,
+          ft.level,
+          COALESCE(fc.subfolder_count, 0) as subfolder_count,
+          COALESCE(flc.file_count, 0) as file_count
+        FROM folder_tree ft
+        INNER JOIN paginated_roots pr ON ft.parent_id = pr.id
+        LEFT JOIN folder_counts fc ON ft.id = fc.parent_id
+        LEFT JOIN file_counts flc ON ft.id = flc.folder_id
+        ${whereClause}
+        
+        UNION ALL
+        
+        -- Get all files for the paginated root folders
+        SELECT 
+          af.id,
+          af.name,
+          af.parent_id,
+          af.description,
+          af.created_at,
+          af.type,
+          af.level,
+          0 as subfolder_count,
+          0 as file_count
+        FROM all_files af
+        INNER JOIN paginated_roots pr ON af.parent_id = pr.id
+      )
+      
+      -- Combine paginated roots with their nested items
+      SELECT 
+        fr.id,
+        fr.name,
+        fr.parent_id,
+        fr.description,
+        fr.created_at,
+        fr.type,
+        fr.level,
+        fr.subfolder_count,
+        fr.file_count
+      FROM (
+        SELECT 
+          pr.id,
+          pr.name,
+          pr.parent_id,
+          pr.description,
+          pr.created_at,
+          pr.type,
+          pr.level,
+          pr.subfolder_count,
+          pr.file_count
+        FROM paginated_roots pr
+        UNION ALL
+        SELECT 
+          ni.id,
+          ni.name,
+          ni.parent_id,
+          ni.description,
+          ni.created_at,
+          ni.type,
+          ni.level,
+          ni.subfolder_count,
+          ni.file_count
+        FROM nested_items ni
+      ) as fr
+      ORDER BY 
+        CASE WHEN fr.parent_id IS NULL THEN 0 ELSE 1 END,
+        ${validatedSortBy} ${validatedSortOrder}
+    `, [offset, offset + limit]);
+
+    // Get total count with filters
+    const totalCountQuery = db.raw(`
+      SELECT 
+        COUNT(*) as total,
+        (SELECT COUNT(*) FROM folders WHERE parent_id IS NULL ${whereClause}) as total_folders,
+        (SELECT COUNT(*) FROM files WHERE folder_id IS NULL ${whereClause.replace('ft.', 'files.')}) as total_files
+      FROM (
+        SELECT id FROM folders WHERE parent_id IS NULL
+        ${whereClause}
+        UNION ALL
+        SELECT id FROM files WHERE folder_id IS NULL
+        ${whereClause.replace('ft.', 'files.')}
+      ) as root_items
+    `, filterParams);
+
+    const [rootItems, totalCountResult] = await Promise.all([
+      rootQuery,
+      totalCountQuery
+    ]);
+
+    const total = parseInt(totalCountResult[0][0].total);
+    const totalFolders = parseInt(totalCountResult[0][0].total_folders);
+    const totalFiles = parseInt(totalCountResult[0][0].total_files);
+    console.log(totalFolders, totalFiles);
+
+    // Build the hierarchical structure
+    const buildHierarchy = (items, parentId = null) => {
+      return items
+        .filter(item => item.parent_id === parentId)
+        .map(item => {
+          if (item.type === 'folder') {
+            return {
+              ...item,
+              children: buildHierarchy(items, item.id)
+            };
+          } else {
+            return {
+              ...item,
+              children: []
+            };
+          }
+        });
+    };
+
+    const hierarchy = buildHierarchy(rootItems[0]);
+    console.log(hierarchy.length);
+
     return {
-      data: [],
+      data: hierarchy,
+      counts: {
+        total_folders: totalFolders,
+        total_files: totalFiles
+      },
       pagination: {
         total,
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(total / limit)
-      },
-      counts: {
-        totalFolders: total,
-        totalFiles: totalFiles,
-        totalItems: total + totalFiles
       }
     };
+  } catch (error) {
+    console.error('Error in getHierarchicalContent:', error);
+    throw error;
   }
-
-  const rootFolderIds = rootFoldersResult.map(folder => folder.id);
-  
-  // Get all descendants using an optimized recursive query
-  const descendantsResult = await db.raw(`
-    WITH RECURSIVE folder_tree AS (
-      -- Base case: direct children of root folders
-      SELECT id, name, parent_id, description, created_at, updated_at, 1 as level, 'folder' as type
-      FROM folders
-      WHERE parent_id IN (?)
-      
-      UNION ALL
-      
-      -- Recursive case: children of children
-      SELECT f.id, f.name, f.parent_id, f.description, f.created_at, f.updated_at, ft.level + 1, 'folder' as type
-      FROM folders f
-      INNER JOIN folder_tree ft ON f.parent_id = ft.id
-      WHERE ft.level < 10  -- Limit recursion depth to prevent infinite loops
-    )
-    SELECT * FROM folder_tree
-    ORDER BY name
-  `, [rootFolderIds]);
-  
-  // Extract descendants from the result
-  const descendants = descendantsResult[0] || [];
-  
-  // Combine root folders with descendants
-  const allFolders = [...rootFoldersResult, ...descendants];
-
-  // Build folder tree using a Map for O(1) lookups
-  const folderMap = new Map();
-  
-  // Initialize the map with all folders
-  allFolders.forEach(folder => {
-    const fileCount = folderFilesMap.get(folder.id) || 0;
-    const subfolderCount = folderSubfoldersMap.get(folder.id) || 0;
-    folderMap.set(folder.id, { 
-      ...folder, 
-      children: [],
-      file_count: fileCount,
-      subfolder_count: subfolderCount,
-      total_items: fileCount + subfolderCount
-    });
-  });
-  
-  // Add children to their parents
-  allFolders.forEach(folder => {
-    if (folder.parent_id && folderMap.has(folder.parent_id)) {
-      const parent = folderMap.get(folder.parent_id);
-      parent.children.push(folderMap.get(folder.id));
-    }
-  });
-  
-  // Get the final tree starting from root folders
-  const folderTree = rootFoldersResult.map(rootFolder => folderMap.get(rootFolder.id));
-
-  // Calculate additional statistics
-  const totalSubfolders = descendants.length;
-  const totalItems = total + totalFiles;
-
-  return {
-    data: folderTree,
-    pagination: {
-      total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(total / limit)
-    },
-    counts: {
-      totalFolders: total,
-      totalFiles: totalFiles,
-      totalSubfolders: totalSubfolders,
-      totalItems: totalItems,
-      rootFolders: rootFoldersResult.length,
-      currentPageFolders: allFolders.length
-    }
-  };
-};
-
-export {
+}; 
+export  {
   createFolder,
   getFolderById,
   getFolderHierarchy

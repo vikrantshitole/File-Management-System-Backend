@@ -9,6 +9,7 @@ exports.up = async function(knex) {
     table.bigInteger('size');
     table.text('description');
     table.timestamp('created_at').defaultTo(knex.fn.now());
+    table.timestamp('updated_at').defaultTo(knex.fn.now());
   });
 
   // Add foreign key constraint after table creation

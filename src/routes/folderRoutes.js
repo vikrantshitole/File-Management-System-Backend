@@ -7,9 +7,6 @@ const router = express.Router();
 // Create a new folder
 router.post('/create', validateCreateFolder, createFolderHandler);
 
-// Get a folder by ID
-// router.get('/:id', validateFolderId, getFolderByIdHandler);
-
 // Get all folders and subfolders
 // This route will return all folders and subfolders in a tree-like structure
 router.get('/',  getFolderHierarchyHandler);

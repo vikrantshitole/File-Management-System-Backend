@@ -136,9 +136,11 @@ const getFolderHierarchy = async (options = {}) => {
           name, 
           parent_id, 
           description, 
-          created_at, 
+          created_at,
+          updated_at,
           'folder' as type,
-          1 as level
+          1 as level,
+          CAST(id AS CHAR(200)) as path
         FROM folders 
         WHERE parent_id IS NULL
         
@@ -150,12 +152,13 @@ const getFolderHierarchy = async (options = {}) => {
           f.name, 
           f.parent_id, 
           f.description, 
-          f.created_at, 
+          f.created_at,
+          f.updated_at,
           'folder' as type,
-          ft.level + 1
+          ft.level + 1,
+          CONCAT(ft.path, ',', f.id) as path
         FROM folders f
         INNER JOIN folder_tree ft ON f.parent_id = ft.id
-        WHERE ft.level < 10  -- Limit recursion depth
       ),
       
       -- Get all files with filters
@@ -166,8 +169,11 @@ const getFolderHierarchy = async (options = {}) => {
           folder_id as parent_id,
           description,
           created_at,
+          updated_at,
           'file' as type,
-          1 as level
+          1 as level,
+          CAST(folder_id AS CHAR(200)) as path,
+          file_path
         FROM files
         ${whereClause.replace('ft.', 'files.')}
       ),
@@ -212,8 +218,11 @@ const getFolderHierarchy = async (options = {}) => {
           r.parent_id,
           r.description,
           r.created_at,
+          r.updated_at,
           r.type,
           r.level,
+          r.path,
+          r.file_path,
           COALESCE(fc.subfolder_count, 0) as subfolder_count,
           COALESCE(flc.file_count, 0) as file_count,
           ROW_NUMBER() OVER (ORDER BY ${validatedSortBy} ${validatedSortOrder}) as row_num
@@ -224,8 +233,11 @@ const getFolderHierarchy = async (options = {}) => {
             ft.parent_id,
             ft.description,
             ft.created_at,
+            ft.updated_at,
             ft.type,
-            ft.level
+            ft.level,
+            ft.path,
+            NULL as file_path
           FROM folder_tree ft 
           WHERE ft.parent_id IS NULL
           UNION ALL
@@ -235,8 +247,11 @@ const getFolderHierarchy = async (options = {}) => {
             af.parent_id,
             af.description,
             af.created_at,
+            af.updated_at,
             af.type,
-            af.level
+            af.level,
+            af.path,
+            af.file_path
           FROM all_files af 
           WHERE af.parent_id IS NULL
         ) as r
@@ -253,8 +268,11 @@ const getFolderHierarchy = async (options = {}) => {
           parent_id,
           description,
           created_at,
+          updated_at,
           type,
           level,
+          path,
+          file_path,
           subfolder_count,
           file_count
         FROM root_items
@@ -264,18 +282,23 @@ const getFolderHierarchy = async (options = {}) => {
       -- Get all nested items for the paginated roots
       nested_items AS (
         -- Get all subfolders for the paginated root folders
-        SELECT 
+        SELECT DISTINCT
           ft.id,
           ft.name,
           ft.parent_id,
           ft.description,
           ft.created_at,
+          ft.updated_at,
           ft.type,
           ft.level,
+          ft.path,
+          NULL as file_path,
           COALESCE(fc.subfolder_count, 0) as subfolder_count,
           COALESCE(flc.file_count, 0) as file_count
         FROM folder_tree ft
-        INNER JOIN paginated_roots pr ON ft.parent_id = pr.id
+        INNER JOIN paginated_roots pr ON 
+          ft.path LIKE CONCAT(pr.path, '%') 
+          AND ft.id != pr.id
         LEFT JOIN folder_counts fc ON ft.id = fc.parent_id
         LEFT JOIN file_counts flc ON ft.id = flc.folder_id
         ${whereClause}
@@ -283,18 +306,22 @@ const getFolderHierarchy = async (options = {}) => {
         UNION ALL
         
         -- Get all files for the paginated root folders
-        SELECT 
+        SELECT DISTINCT
           af.id,
           af.name,
           af.parent_id,
           af.description,
           af.created_at,
+          af.updated_at,
           af.type,
           af.level,
+          af.path,
+          af.file_path,
           0 as subfolder_count,
           0 as file_count
         FROM all_files af
-        INNER JOIN paginated_roots pr ON af.parent_id = pr.id
+        INNER JOIN paginated_roots pr ON 
+          af.path LIKE CONCAT(pr.path, '%')
       )
       
       -- Combine paginated roots with their nested items
@@ -304,8 +331,11 @@ const getFolderHierarchy = async (options = {}) => {
         fr.parent_id,
         fr.description,
         fr.created_at,
+        fr.updated_at,
         fr.type,
         fr.level,
+        fr.path,
+        fr.file_path,
         fr.subfolder_count,
         fr.file_count
       FROM (
@@ -315,8 +345,11 @@ const getFolderHierarchy = async (options = {}) => {
           pr.parent_id,
           pr.description,
           pr.created_at,
+          pr.updated_at,
           pr.type,
           pr.level,
+          pr.path,
+          pr.file_path,
           pr.subfolder_count,
           pr.file_count
         FROM paginated_roots pr
@@ -327,8 +360,11 @@ const getFolderHierarchy = async (options = {}) => {
           ni.parent_id,
           ni.description,
           ni.created_at,
+          ni.updated_at,
           ni.type,
           ni.level,
+          ni.path,
+          ni.file_path,
           ni.subfolder_count,
           ni.file_count
         FROM nested_items ni
@@ -361,7 +397,6 @@ const getFolderHierarchy = async (options = {}) => {
     const total = parseInt(totalCountResult[0][0].total);
     const totalFolders = parseInt(totalCountResult[0][0].total_folders);
     const totalFiles = parseInt(totalCountResult[0][0].total_files);
-    console.log(totalFolders, totalFiles);
 
     // Build the hierarchical structure
     const buildHierarchy = (items, parentId = null) => {
@@ -383,7 +418,6 @@ const getFolderHierarchy = async (options = {}) => {
     };
 
     const hierarchy = buildHierarchy(rootItems[0]);
-    console.log(hierarchy.length);
 
     return {
       data: hierarchy,

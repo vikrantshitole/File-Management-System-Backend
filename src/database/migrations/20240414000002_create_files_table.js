@@ -3,8 +3,8 @@ exports.up = async function(knex) {
   await knex.schema.createTable('files', table => {
     table.increments('id').primary();
     table.string('name').notNullable();
-    table.enu('type', ['pdf', 'image', 'text']).notNullable();
-    table.integer('folder_id').unsigned().notNullable();
+    table.enu('type', ['pdf', 'png', 'docx','jpg','svg']).notNullable();
+    table.integer('folder_id').unsigned();
     table.text('file_path').notNullable();
     table.bigInteger('size');
     table.text('description');

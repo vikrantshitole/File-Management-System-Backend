@@ -125,6 +125,36 @@ const getFolderHierarchy = async (options = {}) => {
   const totalResult = await rootFoldersQuery.clone().count('* as total').first();
   const total = totalResult ? parseInt(totalResult.total) : 0;
   
+  // Get total files count
+  const totalFilesResult = await db('files').count('* as total').first();
+  const totalFiles = totalFilesResult ? parseInt(totalFilesResult.total) : 0;
+
+  // Get files count for each folder
+  const folderFilesCount = await db('files')
+    .select('folder_id')
+    .count('* as count')
+    .groupBy('folder_id');
+
+  // Create a map of folder_id to file count
+  const folderFilesMap = new Map();
+  folderFilesCount.forEach(item => {
+    folderFilesMap.set(item.folder_id, parseInt(item.count));
+  });
+
+  // Get total subfolders count for each folder
+  const folderSubfoldersCount = await db('folders')
+    .select('parent_id')
+    .count('* as count')
+    .groupBy('parent_id');
+
+  // Create a map of parent_id to subfolder count
+  const folderSubfoldersMap = new Map();
+  folderSubfoldersCount.forEach(item => {
+    if (item.parent_id) {
+      folderSubfoldersMap.set(item.parent_id, parseInt(item.count));
+    }
+  });
+  
   // If no folders match the filters, return empty result early
   if (total === 0) {
     return {
@@ -134,12 +164,17 @@ const getFolderHierarchy = async (options = {}) => {
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: 0
+      },
+      counts: {
+        totalFolders: 0,
+        totalFiles: totalFiles,
+        totalItems: totalFiles
       }
     };
   }
   
   // Get paginated root folders
-  const rootFoldersResult = await rootFoldersQuery
+  const rootFoldersResult = await rootFoldersQuery.select('*',db.raw(`'folder' as type`))
     .orderBy(validatedSortBy, validatedSortOrder)
     .limit(limit)
     .offset(offset);
@@ -153,6 +188,11 @@ const getFolderHierarchy = async (options = {}) => {
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(total / limit)
+      },
+      counts: {
+        totalFolders: total,
+        totalFiles: totalFiles,
+        totalItems: total + totalFiles
       }
     };
   }
@@ -163,14 +203,14 @@ const getFolderHierarchy = async (options = {}) => {
   const descendantsResult = await db.raw(`
     WITH RECURSIVE folder_tree AS (
       -- Base case: direct children of root folders
-      SELECT id, name, parent_id, description, created_at, updated_at, 1 as level
+      SELECT id, name, parent_id, description, created_at, updated_at, 1 as level, 'folder' as type
       FROM folders
       WHERE parent_id IN (?)
       
       UNION ALL
       
       -- Recursive case: children of children
-      SELECT f.id, f.name, f.parent_id, f.description, f.created_at, f.updated_at, ft.level + 1
+      SELECT f.id, f.name, f.parent_id, f.description, f.created_at, f.updated_at, ft.level + 1, 'folder' as type
       FROM folders f
       INNER JOIN folder_tree ft ON f.parent_id = ft.id
       WHERE ft.level < 10  -- Limit recursion depth to prevent infinite loops
@@ -190,19 +230,31 @@ const getFolderHierarchy = async (options = {}) => {
   
   // Initialize the map with all folders
   allFolders.forEach(folder => {
-    folderMap.set(folder.id, { ...folder, sub_folders: [] });
+    const fileCount = folderFilesMap.get(folder.id) || 0;
+    const subfolderCount = folderSubfoldersMap.get(folder.id) || 0;
+    folderMap.set(folder.id, { 
+      ...folder, 
+      children: [],
+      file_count: fileCount,
+      subfolder_count: subfolderCount,
+      total_items: fileCount + subfolderCount
+    });
   });
   
   // Add children to their parents
   allFolders.forEach(folder => {
     if (folder.parent_id && folderMap.has(folder.parent_id)) {
       const parent = folderMap.get(folder.parent_id);
-      parent.sub_folders.push(folderMap.get(folder.id));
+      parent.children.push(folderMap.get(folder.id));
     }
   });
   
   // Get the final tree starting from root folders
   const folderTree = rootFoldersResult.map(rootFolder => folderMap.get(rootFolder.id));
+
+  // Calculate additional statistics
+  const totalSubfolders = descendants.length;
+  const totalItems = total + totalFiles;
 
   return {
     data: folderTree,
@@ -211,6 +263,14 @@ const getFolderHierarchy = async (options = {}) => {
       page: parseInt(page),
       limit: parseInt(limit),
       totalPages: Math.ceil(total / limit)
+    },
+    counts: {
+      totalFolders: total,
+      totalFiles: totalFiles,
+      totalSubfolders: totalSubfolders,
+      totalItems: totalItems,
+      rootFolders: rootFoldersResult.length,
+      currentPageFolders: allFolders.length
     }
   };
 };

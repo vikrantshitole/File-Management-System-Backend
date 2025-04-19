@@ -2,7 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   upload,
   trackUploadProgress,
-  cleanupUpload
+  cleanupUpload,
+  deleteFile
 } from '../services/fileUploadService.js';
 import db from '../config/database.js';
 
@@ -84,4 +85,32 @@ export const getUploadProgress = (req, res) => {
     clearInterval(progressInterval);
     cleanupUpload(uploadId);
   });
+};
+/**
+ * Delete a file
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const deleteFileHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await deleteFile(id);
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error in deleteFileHandler:', error);
+    if (error.message === 'File not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
 };

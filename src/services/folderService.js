@@ -165,19 +165,18 @@ const getFolderHierarchy = async (options = {}) => {
       -- Get all files with filters
       all_files AS (
         SELECT 
-          id,
-          name,
-          folder_id as parent_id,
-          description,
-          created_at,
-          updated_at,
+          f.id,
+          f.name,
+          f.folder_id as parent_id,
+          f.description,
+          f.created_at,
+          f.updated_at,
           'file' as type,
           1 as level,
-          CAST(folder_id AS CHAR(200)) as path,
-          file_path
-        FROM files
-        WHERE folder_id IS NULL
-        ${whereClause}
+          CAST(f.folder_id AS CHAR(200)) as path,
+          f.file_path
+        FROM files f
+        ${whereClause ? `WHERE 1=1 ${whereClause.replace('name', 'f.name').replace('description', 'f.description').replace('updated_at', 'f.updated_at')}` : ''}
       ),
       
       -- Get folder counts
@@ -186,8 +185,7 @@ const getFolderHierarchy = async (options = {}) => {
           parent_id,
           COUNT(*) as subfolder_count
         FROM folders
-        ${whereClause ?`where 1=1 ${whereClause}` : ''}
-
+        ${whereClause ? `WHERE 1=1 ${whereClause}` : ''}
         GROUP BY parent_id
       ),
       
@@ -197,6 +195,7 @@ const getFolderHierarchy = async (options = {}) => {
           folder_id,
           COUNT(*) as file_count
         FROM files
+        ${whereClause ? `WHERE 1=1 ${whereClause}` : ''}
         GROUP BY folder_id
       ),
       
@@ -214,7 +213,7 @@ const getFolderHierarchy = async (options = {}) => {
       
       -- Get root level items (for pagination)
       root_items AS (
-        SELECT 
+        SELECT DISTINCT
           r.id,
           r.name,
           r.parent_id,
@@ -263,7 +262,7 @@ const getFolderHierarchy = async (options = {}) => {
       
       -- Get paginated root items
       paginated_roots AS (
-        SELECT 
+        SELECT DISTINCT
           id,
           name,
           parent_id,
@@ -305,7 +304,7 @@ const getFolderHierarchy = async (options = {}) => {
         
         UNION ALL
         
-        -- Get all files for the paginated root folders
+        -- Get all files for the paginated root folders and their subfolders
         SELECT DISTINCT
           af.id,
           af.name,
@@ -329,7 +328,7 @@ const getFolderHierarchy = async (options = {}) => {
       )
       
       -- Combine paginated roots with their nested items
-      SELECT 
+      SELECT DISTINCT
         fr.id,
         fr.name,
         fr.parent_id,
@@ -376,7 +375,7 @@ const getFolderHierarchy = async (options = {}) => {
       ORDER BY 
         CASE WHEN fr.parent_id IS NULL THEN 0 ELSE 1 END,
         ${validatedSortBy} ${validatedSortOrder}
-    `, [...filterParams, ...filterParams, ...filterParams,...filterParams, offset, offset + limit]);
+    `, [...filterParams, ...filterParams, ...filterParams, ...filterParams,  ...filterParams, offset, offset + limit]);
       
     // Get total count with filters
     const totalCountQuery = db.raw(`
@@ -486,12 +485,41 @@ const checkDuplicateFolderName = async (name, parent_id) => {
     return new Error({ error: 'A folder with this name already exists in the same location' });
   }
   return existingFolder;
-} 
-export  {
+}
+
+/**
+ * Delete a folder and its contents
+ * @param {number} id - Folder ID
+ * @returns {Promise<Object>} Deletion result
+ */
+const deleteFolder = async (id) => {
+  try {
+    // First check if folder exists
+    const folder = await db('folders').where('id', id).first();
+    if (!folder) {
+      throw new Error('Folder not found');
+    }
+    // Delete all subfolders and the folder itself
+    await db.raw(`
+      DELETE FROM folders 
+      WHERE id IN (
+        ?
+      )
+    `, [id]);
+
+    return { success: true, message: 'Folder and its contents deleted successfully' };
+  } catch (error) {
+    console.error('Error deleting folder:', error);
+    throw error;
+  }
+};
+
+export {
   createFolder,
   getFolderById,
   getFolderHierarchy,
   checkFolderExists,
   checkParentFolderExists,
-  checkDuplicateFolderName
+  checkDuplicateFolderName,
+  deleteFolder
 };

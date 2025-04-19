@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import db from '../config/database.js';
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -78,3 +79,26 @@ export const getUploadStatus = (uploadId) => {
 export const cleanupUpload = (uploadId) => {
   activeUploads.delete(uploadId);
 }; 
+
+/**
+ * Delete a file
+ * @param {number} id - File ID
+ * @returns {Promise<Object>} Deletion result
+ */
+export const deleteFile = async (id) => {
+  try {
+    // First check if file exists
+    const file = await db('files').where('id', id).first();
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    // Delete the file record
+    await db('files').where('id', id).delete();
+
+    return { success: true, message: 'File deleted successfully' };
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    throw error;
+  }
+};

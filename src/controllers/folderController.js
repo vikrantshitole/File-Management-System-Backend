@@ -1,4 +1,4 @@
-import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFolderExists, checkParentFolderExists, checkDuplicateFolderName } from '../services/folderService.js';
+import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFolderExists, checkParentFolderExists, checkDuplicateFolderName, deleteFolder } from '../services/folderService.js';
 
 /**
  * Create a new folder
@@ -89,7 +89,7 @@ const getFolderHierarchyHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const updateFolderHandler = async (req, res) => {
+const updateFolderHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, parent_id } = req.body;
@@ -118,7 +118,38 @@ export const updateFolderHandler = async (req, res) => {
   }
 };
 
+/**
+ * Delete a folder and its contents
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const deleteFolderHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await deleteFolder(id);
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error in deleteFolderHandler:', error);
+    if (error.message === 'Folder not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Folder not found'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+};
+
 export {
   createFolderHandler,
   getFolderHierarchyHandler,
+  updateFolderHandler,
+  deleteFolderHandler
 };

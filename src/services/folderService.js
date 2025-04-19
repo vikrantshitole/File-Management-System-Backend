@@ -440,9 +440,60 @@ const getFolderHierarchy = async (options = {}) => {
     console.error('Error in getHierarchicalContent:', error);
     throw error;
   }
-}; 
+};
+
+/**
+ * Update a folder
+ * @param {number} id - Folder ID
+ * @param {Object} data - Folder data to update
+ * @returns {Promise<Object>} Updated folder
+ */
+export const updateFolder = async (id, data) => {
+  try {
+    await db('folders')
+      .where('id', id)
+      .update(data)
+      
+
+    const folder = await db('folders')
+      .where('id', id)
+      .first();
+
+    return folder;
+  } catch (error) {
+    console.error('Error updating folder:', error);
+    throw error;
+  }
+};
+
+const checkFolderExists = async (id) => {
+  const existingFolder = await db('folders').where('id', id).first();
+  if (!existingFolder) {
+    return new Error({ error: 'Folder not found' });
+  }
+  return existingFolder;
+}
+
+const checkParentFolderExists = async (parent_id) => {
+  const existingParentFolder = await db('folders').where('id', parent_id).first();
+  if (!existingParentFolder) {
+    return new Error({ error: 'Parent folder not found' });
+  }
+  return existingParentFolder;
+}
+
+const checkDuplicateFolderName = async (name, parent_id) => {
+  const existingFolder = await db('folders').where('name', name).where('parent_id', parent_id).first();
+  if (existingFolder) {
+    return new Error({ error: 'A folder with this name already exists in the same location' });
+  }
+  return existingFolder;
+} 
 export  {
   createFolder,
   getFolderById,
-  getFolderHierarchy
+  getFolderHierarchy,
+  checkFolderExists,
+  checkParentFolderExists,
+  checkDuplicateFolderName
 };

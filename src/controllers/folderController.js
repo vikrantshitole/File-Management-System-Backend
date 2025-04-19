@@ -1,4 +1,4 @@
-import { createFolder, getFolderHierarchy, getFolderById } from '../services/folderService.js';
+import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFolderExists, checkParentFolderExists, checkDuplicateFolderName } from '../services/folderService.js';
 
 /**
  * Create a new folder
@@ -85,6 +85,41 @@ const getFolderHierarchyHandler = async (req, res) => {
     });
   }
 }
+
+/**
+ * Update a folder
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const updateFolderHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, parent_id } = req.body;
+
+    // Check if folder exists
+    await checkFolderExists(id);
+    // Check if parent folder exists if parent_id is provided
+    await checkParentFolderExists(parent_id);
+    // Check for duplicate name in the same parent
+    await checkDuplicateFolderName(name, parent_id);
+    // Update the folder
+    const updatedFolder = await updateFolder(id, {
+      name,
+      description,
+      parent_id,
+      updated_at: new Date()
+    });
+
+    res.json({
+      success: true,
+      data: updatedFolder
+    });
+  } catch (error) {
+    console.error('Error updating folder:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createFolderHandler,
   getFolderHierarchyHandler,

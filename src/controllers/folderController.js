@@ -51,8 +51,7 @@ const getFolderHierarchyHandler = async (req, res) => {
       limit = 10,
       name,
       description,
-      created_at_start,
-      created_at_end,
+      date,
       sort_by,
       sort_order
     } = req.query;
@@ -62,12 +61,11 @@ const getFolderHierarchyHandler = async (req, res) => {
       limit: parseInt(limit),
       name,
       description,
-      created_at_start,
-      created_at_end,
+      date,
       sort_by,
       sort_order
     };
-
+        
     const result = await getFolderHierarchy(options);
 
     res.json({

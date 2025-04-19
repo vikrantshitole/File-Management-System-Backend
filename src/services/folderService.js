@@ -86,7 +86,7 @@ const getFolderHierarchy = async (options = {}) => {
     limit = 10,
     name,
     description,
-    created_at_start,
+    date,
     created_at_end,
     sort_by = 'created_at',
     sort_order = 'desc'
@@ -107,26 +107,25 @@ const getFolderHierarchy = async (options = {}) => {
     const filterParams = [];
 
     if (name) {
-      filterConditions.push('ft.name LIKE ?');
+      filterConditions.push('name LIKE ?');
       filterParams.push(`%${name}%`);
     }
     if (description) {
-      filterConditions.push('ft.description LIKE ?');
+      filterConditions.push('description LIKE ?');
       filterParams.push(`%${description}%`);
     }
-    if (created_at_start) {
-      filterConditions.push('ft.created_at >= ?');
-      filterParams.push(created_at_start);
+    if (date) {
+      filterConditions.push('updated_at >= ?');
+      let newDate = new Date(date)
+      newDate.setHours(0, 0, 0, 0);
+      filterParams.push(newDate);
     }
-    if (created_at_end) {
-      filterConditions.push('ft.created_at <= ?');
-      filterParams.push(created_at_end);
-    }
-
+    
     const whereClause = filterConditions.length > 0 
-      ? `WHERE ${filterConditions.join(' AND ')}` 
+      ? `AND ${filterConditions.join(' AND ')}` 
       : '';
-
+    console.log();
+    
     // Get root folders and files with filters
     const rootQuery = db.raw(`
       WITH RECURSIVE folder_tree AS (
@@ -143,6 +142,7 @@ const getFolderHierarchy = async (options = {}) => {
           CAST(id AS CHAR(200)) as path
         FROM folders 
         WHERE parent_id IS NULL
+        ${whereClause}
         
         UNION ALL
         
@@ -159,6 +159,7 @@ const getFolderHierarchy = async (options = {}) => {
           CONCAT(ft.path, ',', f.id) as path
         FROM folders f
         INNER JOIN folder_tree ft ON f.parent_id = ft.id
+        ${whereClause.replace('name', 'f.name').replace('description', 'f.description').replace('updated_at', 'f.updated_at')}
       ),
       
       -- Get all files with filters
@@ -175,7 +176,8 @@ const getFolderHierarchy = async (options = {}) => {
           CAST(folder_id AS CHAR(200)) as path,
           file_path
         FROM files
-        ${whereClause.replace('ft.', 'files.')}
+        WHERE folder_id IS NULL
+        ${whereClause}
       ),
       
       -- Get folder counts
@@ -184,6 +186,8 @@ const getFolderHierarchy = async (options = {}) => {
           parent_id,
           COUNT(*) as subfolder_count
         FROM folders
+        ${whereClause ?`where 1=1 ${whereClause}` : ''}
+
         GROUP BY parent_id
       ),
       
@@ -203,10 +207,8 @@ const getFolderHierarchy = async (options = {}) => {
           SUM(CASE WHEN type = 'file' THEN 1 ELSE 0 END) as total_files
         FROM (
           SELECT 'folder' as type FROM folder_tree
-          ${whereClause}
           UNION ALL
           SELECT 'file' as type FROM files
-          ${whereClause.replace('ft.', 'files.')}
         ) as combined
       ),
       
@@ -257,7 +259,6 @@ const getFolderHierarchy = async (options = {}) => {
         ) as r
         LEFT JOIN folder_counts fc ON r.id = fc.parent_id
         LEFT JOIN file_counts flc ON r.id = flc.folder_id
-        ${whereClause}
       ),
       
       -- Get paginated root items
@@ -301,7 +302,6 @@ const getFolderHierarchy = async (options = {}) => {
           AND ft.id != pr.id
         LEFT JOIN folder_counts fc ON ft.id = fc.parent_id
         LEFT JOIN file_counts flc ON ft.id = flc.folder_id
-        ${whereClause}
         
         UNION ALL
         
@@ -376,22 +376,20 @@ const getFolderHierarchy = async (options = {}) => {
       ORDER BY 
         CASE WHEN fr.parent_id IS NULL THEN 0 ELSE 1 END,
         ${validatedSortBy} ${validatedSortOrder}
-    `, [offset, offset + limit]);
-
+    `, [...filterParams, ...filterParams, ...filterParams,...filterParams, offset, offset + limit]);
+      
     // Get total count with filters
     const totalCountQuery = db.raw(`
       SELECT 
         COUNT(*) as total,
         (SELECT COUNT(*) FROM folders WHERE parent_id IS NULL ${whereClause}) as total_folders,
-        (SELECT COUNT(*) FROM files WHERE folder_id IS NULL ${whereClause.replace('ft.', 'files.')}) as total_files
+        (SELECT COUNT(*) FROM files WHERE folder_id IS NULL ${whereClause}) as total_files
       FROM (
-        SELECT id FROM folders WHERE parent_id IS NULL
-        ${whereClause}
+        SELECT id FROM folders WHERE parent_id IS NULL ${whereClause}
         UNION ALL
-        SELECT id FROM files WHERE folder_id IS NULL
-        ${whereClause.replace('ft.', 'files.')}
+        SELECT id FROM files WHERE folder_id IS NULL ${whereClause}
       ) as root_items
-    `, filterParams);
+    `, [...filterParams, ...filterParams, ...filterParams, ...filterParams]);
 
     const [rootItems, totalCountResult] = await Promise.all([
       rootQuery,

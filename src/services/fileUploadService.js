@@ -15,6 +15,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueId = uuidv4();
     const extension = path.extname(file.originalname);
+    req.body.file_type = extension.slice(1); // Store file type in req.body
     cb(null, `${uniqueId}${extension}`);
   }
 });

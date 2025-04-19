@@ -321,7 +321,11 @@ const getFolderHierarchy = async (options = {}) => {
           0 as file_count
         FROM all_files af
         INNER JOIN paginated_roots pr ON 
-          af.path LIKE CONCAT(pr.path, '%')
+          af.parent_id = pr.id
+          OR af.parent_id IN (
+            SELECT id FROM folder_tree ft 
+            WHERE ft.path LIKE CONCAT(pr.path, '%')
+          )
       )
       
       -- Combine paginated roots with their nested items

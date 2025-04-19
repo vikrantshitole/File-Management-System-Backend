@@ -26,31 +26,27 @@ export const uploadFile = async (req, res) => {
       tracker.fail(error);
       return res.status(400).json({ error: error.message });
     }
-    tracker.update(20,req.file);
-    console.log('File uploaded:', req.file);
-    console.log('File details:', req.body);
+
+    tracker.update(20, req.file);
     
     try {
-
-      const now = new Date().toISOString();
       const fileData = {
-
         name: req.file.originalname,
         file_path: req.file.path,
         size: req.file.size,
         type: req.body.file_type,
         folder_id: req.body.folder_id || null,
-        // created_at: now,
-        // updated_at: now
-      };
-    tracker.update(40);
+       };
 
-      const insertedFile = await db('files').insert(fileData);
+      tracker.update(40);
+      const [fileId] = await db('files').insert(fileData);
       tracker.update(80);
+      const insertedFile = await db('files').where('id', fileId).first();
+      tracker.complete(insertedFile);
 
-      setTimeout(()=>tracker.complete(insertedFile),100000);
 
     } catch (error) {
+      console.log('Error inserting file into database:', error);
       tracker.fail(error);
       res.status(500).json({ error: error.message });
     }

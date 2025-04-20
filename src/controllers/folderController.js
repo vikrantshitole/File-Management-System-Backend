@@ -1,4 +1,13 @@
-import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFolderExists, checkParentFolderExists, checkDuplicateFolderName, deleteFolder } from '../services/folderService.js';
+import {
+  createFolder,
+  getFolderHierarchy,
+  getFolderById,
+  updateFolder,
+  checkFolderExists,
+  checkParentFolderExists,
+  checkDuplicateFolderName,
+  deleteFolder,
+} from '../services/folderService.js';
 
 /**
  * Create a new folder
@@ -7,8 +16,8 @@ import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFol
  */
 export const createFolderHandler = async (req, res) => {
   try {
-    const { name, description, parent_id } = req.body;  
-      
+    const { name, description, parent_id } = req.body;
+
     const folder = await createFolder(req.body);
     res.status(201).json(folder);
   } catch (error) {
@@ -18,7 +27,7 @@ export const createFolderHandler = async (req, res) => {
       return res.status(404).json({
         status: 'error',
         message: error.message,
-        code: 'PARENT_FOLDER_NOT_FOUND'
+        code: 'PARENT_FOLDER_NOT_FOUND',
       });
     }
 
@@ -27,7 +36,7 @@ export const createFolderHandler = async (req, res) => {
       return res.status(409).json({
         status: 'error',
         message: error.message,
-        code: 'FOLDER_ALREADY_EXISTS'
+        code: 'FOLDER_ALREADY_EXISTS',
       });
     }
 
@@ -36,7 +45,7 @@ export const createFolderHandler = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An unexpected error occurred while creating the folder',
-      code: 'INTERNAL_SERVER_ERROR'
+      code: 'INTERNAL_SERVER_ERROR',
     });
   }
 };
@@ -48,15 +57,7 @@ export const createFolderHandler = async (req, res) => {
  */
 export const getFolderHierarchyHandler = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      name,
-      description,
-      date,
-      sort_by,
-      sort_order
-    } = req.query;
+    const { page = 1, limit = 10, name, description, date, sort_by, sort_order } = req.query;
 
     const options = {
       page: parseInt(page),
@@ -65,7 +66,7 @@ export const getFolderHierarchyHandler = async (req, res) => {
       description,
       date,
       sort_by,
-      sort_order
+      sort_order,
     };
 
     const result = await getFolderHierarchy(options);
@@ -81,10 +82,10 @@ export const getFolderHierarchyHandler = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
-      code: 'INTERNAL_SERVER_ERROR'
+      code: 'INTERNAL_SERVER_ERROR',
     });
   }
-}
+};
 
 /**
  * Update a folder
@@ -108,19 +109,19 @@ export const updateFolderHandler = async (req, res) => {
       name,
       description,
       parent_id,
-      updated_at: new Date()
+      updated_at: new Date(),
     });
 
     res.json({
       success: true,
-      data: updatedFolder
+      data: updatedFolder,
     });
   } catch (error) {
     console.error('Error updating folder:', error);
     res.status(500).json({
       success: false,
       error: error.message,
-      code: 'INTERNAL_SERVER_ERROR'
+      code: 'INTERNAL_SERVER_ERROR',
     });
   }
 };
@@ -136,7 +137,7 @@ export const deleteFolderHandler = async (req, res) => {
     const result = await deleteFolder(id);
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     console.error('Error in deleteFolderHandler:', error);
@@ -144,14 +145,13 @@ export const deleteFolderHandler = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: error.message,
-        code: 'FOLDER_NOT_FOUND'
+        code: 'FOLDER_NOT_FOUND',
       });
     }
     res.status(500).json({
       success: false,
       message: error.message,
-      code: 'INTERNAL_SERVER_ERROR'
+      code: 'INTERNAL_SERVER_ERROR',
     });
   }
 };
-

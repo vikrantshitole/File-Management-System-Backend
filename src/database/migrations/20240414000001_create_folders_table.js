@@ -1,5 +1,4 @@
 exports.up = async function(knex) {
-  // Create folders table
   await knex.schema.createTable('folders', table => {
     table.increments('id').primary();
     table.string('name').notNullable();
@@ -9,7 +8,6 @@ exports.up = async function(knex) {
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });
 
-  // Add self-referential foreign key after table creation
   await knex.schema.alterTable('folders', table => {
     table.foreign('parent_id')
       .references('id')
@@ -17,7 +15,6 @@ exports.up = async function(knex) {
       .onDelete('CASCADE');
   });
 
-  // Add index for folder name uniqueness within parent
   await knex.schema.raw('CREATE INDEX idx_folder_unique_name ON folders(name, parent_id)');
 };
 

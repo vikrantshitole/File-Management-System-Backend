@@ -16,6 +16,8 @@ export const uploadFile = async (req, res) => {
     message: 'File uploaded successfully',
     uploadId,
   });
+  tracker.update(10, req.file);
+
   upload.single('file')(req, res, async (err) => {
     if (err) {
       tracker.fail(err);
@@ -60,7 +62,10 @@ export const getUploadProgress = (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': 'http://localhost:5173',
+    'Access-Control-Allow-Credentials': 'true'
+
   });
 
   res.write(`data: ${JSON.stringify({ type: 'connected', uploadId })}\n\n`);
@@ -72,6 +77,7 @@ export const getUploadProgress = (req, res) => {
       res.write(`data: ${JSON.stringify(status)}\n\n`);
 
       if (['completed', 'failed'].includes(status.status)) {
+        res.write(`event: end\ndata: done\n\n`);
         cleanupUpload(uploadId);
         clearInterval(progressInterval);
         res.end();

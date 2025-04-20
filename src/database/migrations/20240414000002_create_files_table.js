@@ -1,9 +1,8 @@
 exports.up = async function(knex) {
-  // First create the files table without foreign key
   await knex.schema.createTable('files', table => {
     table.increments('id').primary();
     table.string('name').notNullable();
-    table.enu('type', ['pdf', 'png', 'docx','jpg','svg']).notNullable();
+    table.enu('type', ['pdf', 'png', 'docx', 'jpg', 'svg', 'gif', 'txt']).notNullable();
     table.integer('folder_id').unsigned();
     table.text('file_path').notNullable();
     table.bigInteger('size');
@@ -12,7 +11,6 @@ exports.up = async function(knex) {
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });
 
-  // Add foreign key constraint after table creation
   await knex.schema.alterTable('files', table => {
     table.foreign('folder_id')
       .references('id')
@@ -20,7 +18,6 @@ exports.up = async function(knex) {
       .onDelete('CASCADE');
   });
 
-  // Add indexes
   await knex.schema.raw('CREATE INDEX idx_file_folder_name ON files(folder_id, name)');
 };
 

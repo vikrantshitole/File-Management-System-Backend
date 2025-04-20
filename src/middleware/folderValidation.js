@@ -1,4 +1,4 @@
-const validateCreateFolder = (req, res, next) => {
+export const validateCreateFolder = (req, res, next) => {
     
   const { name=null, parent_id=null, description=null } = req.body;
 
@@ -74,7 +74,7 @@ const validateCreateFolder = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-const validateFolderId = (req, res, next) => {
+export const validateFolderId = (req, res, next) => {
   const { id } = req.params;
 
   // Check if ID is provided
@@ -112,8 +112,3 @@ const validateFolderId = (req, res, next) => {
   
   next();
 };
-
-export {
-  validateCreateFolder,
-  validateFolderId
-}; 

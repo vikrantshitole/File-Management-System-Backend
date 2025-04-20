@@ -3,15 +3,16 @@ import {
   upload,
   trackUploadProgress,
   cleanupUpload,
-  deleteFile
+  deleteFile,
+  insertFile,
+  findFileById
 } from '../services/fileUploadService.js';
-import db from '../config/database.js';
 
 export const uploadFile = async (req, res) => {
   const uploadId = uuidv4();
   const tracker = trackUploadProgress(uploadId);
   tracker.start();
-  
+
   res.json({
     message: 'File uploaded successfully',
     uploadId,
@@ -21,17 +22,17 @@ export const uploadFile = async (req, res) => {
   upload.single('file')(req, res, async (err) => {
     if (err) {
       tracker.fail(err);
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: err.message, success: false, code: 'FILE_UPLOAD_ERROR' });
     }
 
     if (!req.file) {
       const error = new Error('No file uploaded');
       tracker.fail(error);
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ error: error.message, success: false, code: 'FILE_UPLOAD_ERROR' });
     }
 
     tracker.update(20, req.file);
-    
+
     try {
       const fileData = {
         name: req.file.originalname,
@@ -39,19 +40,19 @@ export const uploadFile = async (req, res) => {
         size: req.file.size,
         type: req.body.file_type,
         folder_id: req.body.folder_id || null,
-       };
+      };
 
       tracker.update(40);
-      const [fileId] = await db('files').insert(fileData);
+      const fileId = await insertFile(fileData);
       tracker.update(80);
-      const insertedFile = await db('files').where('id', fileId).first();
+      const insertedFile = await findFileById(fileId);
       tracker.complete(insertedFile);
 
 
     } catch (error) {
       console.log('Error inserting file into database:', error);
       tracker.fail(error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message, success: false, code: 'INTERNAL_SERVER_ERROR' });
     }
   });
 };
@@ -110,13 +111,14 @@ export const deleteFileHandler = async (req, res) => {
     if (error.message === 'File not found') {
       return res.status(404).json({
         success: false,
-        error: 'File not found'
+        message: error.message,
+        code: 'FILE_NOT_FOUND'
       });
     }
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
-      message: error.message
+      message: error.message,
+      code: 'INTERNAL_SERVER_ERROR'
     });
   }
 };

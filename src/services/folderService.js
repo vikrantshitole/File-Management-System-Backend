@@ -1,5 +1,5 @@
-import db from '../config/database.js';
-// import { buildFolderTree } from '../utils/index.js';
+import db from '../database/database.js';
+import { buildHierarchy } from '../utils/index.js';
 
 /**
  * Create a new folder
@@ -8,33 +8,16 @@ import db from '../config/database.js';
  * @param {number} [folderData.parent_id] - Parent folder ID
  * @returns {Promise<Object>} Created folder
  */
-const createFolder = async (folderData) => {
-  const { name, parent_id, description } = folderData;
+export const createFolder = async (folderData) => {
+  const { name, parent_id=null, description } = folderData;
 
-  // If parent_id is provided, check if it exists
   if (parent_id) {
-    const parentFolder = await db('folders')
-      .where('id', parent_id)
-      .first();
-
-    if (!parentFolder) {
-      throw new Error('Parent folder not found');
-    }
+    
+    await checkParentFolderExists(parent_id);
   }
 
-  // Check if folder with same name exists in the same parent
-  const existingFolder = await db('folders')
-    .where({
-      name,
-      parent_id: parent_id || null
-    })
-    .first();
+  await checkDuplicateFolderName(name);
 
-  if (existingFolder) {
-    throw new Error('A folder with this name already exists in the same location');
-  }
-
-  // Create the folder
   const [folderId] = await db('folders')
     .insert({
       name,
@@ -42,10 +25,7 @@ const createFolder = async (folderData) => {
       description
     });
     
-  // Fetch the created folder
-  const folder = await db('folders')
-    .where('id', folderId)
-    .first();
+  const folder = await getFolderById(folderId);
 
   return folder;
 };
@@ -55,7 +35,7 @@ const createFolder = async (folderData) => {
  * @param {number} id - Folder ID
  * @returns {Promise<Object>} Folder
  */
-const getFolderById = async (id) => {
+export const getFolderById = async (id) => {
   const folder = await db('folders')
     .where('id', id)
     .first();
@@ -80,7 +60,7 @@ const getFolderById = async (id) => {
  * @param {string} [options.sort_order='asc'] - Sort order (asc, desc)
  * @returns {Promise<Object>} Paginated root folders with their complete subfolder hierarchy
  */
-const getFolderHierarchy = async (options = {}) => {
+export const getFolderHierarchy = async (options = {}) => {
   const {
     page = 1,
     limit = 10,
@@ -377,7 +357,6 @@ const getFolderHierarchy = async (options = {}) => {
         ${validatedSortBy} ${validatedSortOrder}
     `, [...filterParams, ...filterParams, ...filterParams, ...filterParams,  ...filterParams, offset, offset + limit]);
       
-    // Get total count with filters
     const totalCountQuery = db.raw(`
       SELECT 
         COUNT(*) as total,
@@ -398,25 +377,6 @@ const getFolderHierarchy = async (options = {}) => {
     const total = parseInt(totalCountResult[0][0].total);
     const totalFolders = parseInt(totalCountResult[0][0].total_folders);
     const totalFiles = parseInt(totalCountResult[0][0].total_files);
-
-    // Build the hierarchical structure
-    const buildHierarchy = (items, parentId = null) => {
-      return items
-        .filter(item => item.parent_id === parentId)
-        .map(item => {
-          if (item.type === 'folder') {
-            return {
-              ...item,
-              children: buildHierarchy(items, item.id)
-            };
-          } else {
-            return {
-              ...item,
-              children: []
-            };
-          }
-        });
-    };
 
     const hierarchy = buildHierarchy(rootItems[0]);
 
@@ -447,14 +407,13 @@ const getFolderHierarchy = async (options = {}) => {
  */
 export const updateFolder = async (id, data) => {
   try {
+    console.log('Updated folder:', id);
     await db('folders')
       .where('id', id)
       .update(data)
       
-
-    const folder = await db('folders')
-      .where('id', id)
-      .first();
+    
+    const folder = await getFolderById(id);
 
     return folder;
   } catch (error) {
@@ -463,24 +422,26 @@ export const updateFolder = async (id, data) => {
   }
 };
 
-const checkFolderExists = async (id) => {
-  const existingFolder = await db('folders').where('id', id).first();
+export const checkFolderExists = async (id) => {
+  const existingFolder = await getFolderById(id);
+  console.log(existingFolder);
+  
   if (!existingFolder) {
     return new Error({ error: 'Folder not found' });
   }
   return existingFolder;
 }
 
-const checkParentFolderExists = async (parent_id) => {
-  const existingParentFolder = await db('folders').where('id', parent_id).first();
+export const checkParentFolderExists = async (parent_id) => {
+  const existingParentFolder = await getFolderById(parent_id); 
   if (!existingParentFolder) {
     return new Error({ error: 'Parent folder not found' });
   }
   return existingParentFolder;
 }
 
-const checkDuplicateFolderName = async (name, parent_id) => {
-  const existingFolder = await db('folders').where('name', name).where('parent_id', parent_id).first();
+export const checkDuplicateFolderName = async (name, parent_id) => {
+  const existingFolder = await db('folders').where('name', name).where('parent_id', parent_id || null).first();
   if (existingFolder) {
     return new Error({ error: 'A folder with this name already exists in the same location' });
   }
@@ -492,34 +453,19 @@ const checkDuplicateFolderName = async (name, parent_id) => {
  * @param {number} id - Folder ID
  * @returns {Promise<Object>} Deletion result
  */
-const deleteFolder = async (id) => {
+export const deleteFolder = async (id) => {
   try {
     // First check if folder exists
-    const folder = await db('folders').where('id', id).first();
+    const folder = await getFolderById(id);
     if (!folder) {
       throw new Error('Folder not found');
     }
-    // Delete all subfolders and the folder itself
-    await db.raw(`
-      DELETE FROM folders 
-      WHERE id IN (
-        ?
-      )
-    `, [id]);
+
+    await db('folders').where('id', id).delete();
 
     return { success: true, message: 'Folder and its contents deleted successfully' };
   } catch (error) {
     console.error('Error deleting folder:', error);
     throw error;
   }
-};
-
-export {
-  createFolder,
-  getFolderById,
-  getFolderHierarchy,
-  checkFolderExists,
-  checkParentFolderExists,
-  checkDuplicateFolderName,
-  deleteFolder
 };

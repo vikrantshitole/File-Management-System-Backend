@@ -4,17 +4,13 @@ import { validateCreateFolder } from '../middleware/folderValidation.js';
 
 const router = express.Router();
 
-// Create a new folder
+
 router.post('/create', validateCreateFolder, createFolderHandler);
 
-// Get all folders and subfolders
-// This route will return all folders and subfolders in a tree-like structure
 router.get('/',  getFolderHierarchyHandler);
 
-// Update folder
 router.put('/update/:id', validateCreateFolder, updateFolderHandler);
 
-// Delete a folder and its contents
 router.delete('/:id', deleteFolderHandler);
 
 export default router; 

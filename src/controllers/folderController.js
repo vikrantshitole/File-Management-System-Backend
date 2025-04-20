@@ -5,7 +5,7 @@ import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFol
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const createFolderHandler = async (req, res) => {  
+export const createFolderHandler = async (req, res) => {
   try {
     const folder = await createFolder(req.body);
     res.status(201).json(folder);
@@ -44,7 +44,7 @@ const createFolderHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getFolderHierarchyHandler = async (req, res) => {
+export const getFolderHierarchyHandler = async (req, res) => {
   try {
     const {
       page = 1,
@@ -65,7 +65,7 @@ const getFolderHierarchyHandler = async (req, res) => {
       sort_by,
       sort_order
     };
-        
+
     const result = await getFolderHierarchy(options);
 
     res.json({
@@ -78,8 +78,8 @@ const getFolderHierarchyHandler = async (req, res) => {
     console.error('Error in getHierarchicalContentHandler:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
-      message: error.message
+      message: error.message,
+      code: 'INTERNAL_SERVER_ERROR'
     });
   }
 }
@@ -89,16 +89,17 @@ const getFolderHierarchyHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const updateFolderHandler = async (req, res) => {
+export const updateFolderHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, parent_id } = req.body;
 
-    // Check if folder exists
     await checkFolderExists(id);
-    // Check if parent folder exists if parent_id is provided
-    await checkParentFolderExists(parent_id);
-    // Check for duplicate name in the same parent
+
+    if (parent_id) {
+      await checkParentFolderExists(parent_id);
+    }
+
     await checkDuplicateFolderName(name, parent_id);
     // Update the folder
     const updatedFolder = await updateFolder(id, {
@@ -114,7 +115,11 @@ const updateFolderHandler = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating folder:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      code: 'INTERNAL_SERVER_ERROR'
+    });
   }
 };
 
@@ -123,7 +128,7 @@ const updateFolderHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const deleteFolderHandler = async (req, res) => {
+export const deleteFolderHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await deleteFolder(id);
@@ -136,20 +141,15 @@ const deleteFolderHandler = async (req, res) => {
     if (error.message === 'Folder not found') {
       return res.status(404).json({
         success: false,
-        error: 'Folder not found'
+        message: error.message,
+        code: 'FOLDER_NOT_FOUND'
       });
     }
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
-      message: error.message
+      message: error.message,
+      code: 'INTERNAL_SERVER_ERROR'
     });
   }
 };
 
-export {
-  createFolderHandler,
-  getFolderHierarchyHandler,
-  updateFolderHandler,
-  deleteFolderHandler
-};

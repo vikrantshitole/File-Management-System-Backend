@@ -1,10 +1,19 @@
 
-// Recursive function to build tree
-export const buildFolderTree = (folders, parentId = null) => {
-    return folders
-      .filter(folder => folder.parent_id === parentId)
-      .map(folder => ({
-        ...folder,
-        sub_folders: buildFolderTree(folders, folder.id)
-      }));
-  };
+
+export const buildHierarchy = (items, parentId = null) => {
+  return items
+    .filter(item => item.parent_id === parentId)
+    .map(item => {
+      if (item.type === 'folder') {
+        return {
+          ...item,
+          children: buildHierarchy(items, item.id)
+        };
+      } else {
+        return {
+          ...item,
+          children: []
+        };
+      }
+    });
+};

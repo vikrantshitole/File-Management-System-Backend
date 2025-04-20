@@ -424,10 +424,9 @@ export const updateFolder = async (id, data) => {
 
 export const checkFolderExists = async (id) => {
   const existingFolder = await getFolderById(id);
-  console.log(existingFolder);
   
   if (!existingFolder) {
-    return new Error({ error: 'Folder not found' });
+    throw new Error('Folder not found');
   }
   return existingFolder;
 }
@@ -435,15 +434,16 @@ export const checkFolderExists = async (id) => {
 export const checkParentFolderExists = async (parent_id) => {
   const existingParentFolder = await getFolderById(parent_id); 
   if (!existingParentFolder) {
-    return new Error({ error: 'Parent folder not found' });
+    throw new Error( 'Parent folder not found' );
   }
   return existingParentFolder;
 }
 
 export const checkDuplicateFolderName = async (name, parent_id) => {
   const existingFolder = await db('folders').where('name', name).where('parent_id', parent_id || null).first();
+  
   if (existingFolder) {
-    return new Error({ error: 'A folder with this name already exists in the same location' });
+    throw new Error( 'A folder with this name already exists in the same location' );
   }
   return existingFolder;
 }

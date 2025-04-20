@@ -5,7 +5,7 @@ import {
   cleanupUpload,
   deleteFile,
   insertFile,
-  findFileById
+  findFileById,
 } from '../services/fileUploadService.js';
 
 export const uploadFile = async (req, res) => {
@@ -19,16 +19,20 @@ export const uploadFile = async (req, res) => {
   });
   tracker.update(10, req.file);
 
-  upload.single('file')(req, res, async (err) => {
+  upload.single('file')(req, res, async err => {
     if (err) {
       tracker.fail(err);
-      return res.status(400).json({ error: err.message, success: false, code: 'FILE_UPLOAD_ERROR' });
+      return res
+        .status(400)
+        .json({ error: err.message, success: false, code: 'FILE_UPLOAD_ERROR' });
     }
 
     if (!req.file) {
       const error = new Error('No file uploaded');
       tracker.fail(error);
-      return res.status(400).json({ error: error.message, success: false, code: 'FILE_UPLOAD_ERROR' });
+      return res
+        .status(400)
+        .json({ error: error.message, success: false, code: 'FILE_UPLOAD_ERROR' });
     }
 
     tracker.update(20, req.file);
@@ -47,8 +51,6 @@ export const uploadFile = async (req, res) => {
       tracker.update(80);
       const insertedFile = await findFileById(fileId);
       tracker.complete(insertedFile);
-
-
     } catch (error) {
       console.log('Error inserting file into database:', error);
       tracker.fail(error);
@@ -63,10 +65,9 @@ export const getUploadProgress = (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'Access-Control-Allow-Origin': 'http://localhost:5173',
-    'Access-Control-Allow-Credentials': 'true'
-
+    'Access-Control-Allow-Credentials': 'true',
   });
 
   res.write(`data: ${JSON.stringify({ type: 'connected', uploadId })}\n\n`);
@@ -104,7 +105,7 @@ export const deleteFileHandler = async (req, res) => {
     const result = await deleteFile(id);
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     console.error('Error in deleteFileHandler:', error);
@@ -112,13 +113,13 @@ export const deleteFileHandler = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: error.message,
-        code: 'FILE_NOT_FOUND'
+        code: 'FILE_NOT_FOUND',
       });
     }
     res.status(500).json({
       success: false,
       message: error.message,
-      code: 'INTERNAL_SERVER_ERROR'
+      code: 'INTERNAL_SERVER_ERROR',
     });
   }
 };

@@ -9,4 +9,4 @@ router.use('/folders', folderRoutes);
 
 router.use('/files', fileUploadRoutes);
 
-export default router; 
+export default router;

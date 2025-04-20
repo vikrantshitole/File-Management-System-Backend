@@ -1,5 +1,3 @@
-
-
 export const buildHierarchy = (items, parentId = null) => {
   return items
     .filter(item => item.parent_id === parentId)
@@ -7,12 +5,12 @@ export const buildHierarchy = (items, parentId = null) => {
       if (item.type === 'folder') {
         return {
           ...item,
-          children: buildHierarchy(items, item.id)
+          children: buildHierarchy(items, item.id),
         };
       } else {
         return {
           ...item,
-          children: []
+          children: [],
         };
       }
     });

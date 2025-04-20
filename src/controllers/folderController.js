@@ -7,6 +7,8 @@ import { createFolder, getFolderHierarchy, getFolderById, updateFolder, checkFol
  */
 export const createFolderHandler = async (req, res) => {
   try {
+    const { name, description, parent_id } = req.body;  
+      
     const folder = await createFolder(req.body);
     res.status(201).json(folder);
   } catch (error) {

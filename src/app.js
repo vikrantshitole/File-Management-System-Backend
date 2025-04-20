@@ -5,7 +5,6 @@ import routes from './routes/index.js';
 import errorHandler from './middleware/errorHandler.js';
 import { join } from 'path';
 
-
 const app = express();
 
 app.use(cors());
@@ -24,4 +23,4 @@ app.use('/api', routes);
 
 app.use(errorHandler);
 
-export default app; 
+export default app;

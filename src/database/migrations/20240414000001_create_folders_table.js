@@ -1,4 +1,4 @@
-exports.up = async function(knex) {
+exports.up = async function (knex) {
   await knex.schema.createTable('folders', table => {
     table.increments('id').primary();
     table.string('name').notNullable();
@@ -9,15 +9,12 @@ exports.up = async function(knex) {
   });
 
   await knex.schema.alterTable('folders', table => {
-    table.foreign('parent_id')
-      .references('id')
-      .inTable('folders')
-      .onDelete('CASCADE');
+    table.foreign('parent_id').references('id').inTable('folders').onDelete('CASCADE');
   });
 
   await knex.schema.raw('CREATE INDEX idx_folder_unique_name ON folders(name, parent_id)');
 };
 
-exports.down = async function(knex) {
+exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('folders');
-}; 
+};

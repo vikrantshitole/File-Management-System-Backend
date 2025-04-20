@@ -8,23 +8,21 @@ import { buildHierarchy } from '../utils/index.js';
  * @param {number} [folderData.parent_id] - Parent folder ID
  * @returns {Promise<Object>} Created folder
  */
-export const createFolder = async (folderData) => {
-  const { name, parent_id=null, description } = folderData;
+export const createFolder = async folderData => {
+  const { name, parent_id = null, description } = folderData;
 
   if (parent_id) {
-    
     await checkParentFolderExists(parent_id);
   }
 
   await checkDuplicateFolderName(name);
 
-  const [folderId] = await db('folders')
-    .insert({
-      name,
-      parent_id,
-      description
-    });
-    
+  const [folderId] = await db('folders').insert({
+    name,
+    parent_id,
+    description,
+  });
+
   const folder = await getFolderById(folderId);
 
   return folder;
@@ -35,10 +33,8 @@ export const createFolder = async (folderData) => {
  * @param {number} id - Folder ID
  * @returns {Promise<Object>} Folder
  */
-export const getFolderById = async (id) => {
-  const folder = await db('folders')
-    .where('id', id)
-    .first();
+export const getFolderById = async id => {
+  const folder = await db('folders').where('id', id).first();
 
   if (!folder) {
     throw new Error('Folder not found');
@@ -67,9 +63,8 @@ export const getFolderHierarchy = async (options = {}) => {
     name,
     description,
     date,
-    created_at_end,
     sort_by = 'created_at',
-    sort_order = 'desc'
+    sort_order = 'desc',
   } = options;
 
   const offset = (page - 1) * limit;
@@ -77,9 +72,11 @@ export const getFolderHierarchy = async (options = {}) => {
   // Validate sort parameters
   const validSortFields = ['name', 'created_at', 'updated_at'];
   const validSortOrders = ['asc', 'desc'];
-  
+
   const validatedSortBy = validSortFields.includes(sort_by) ? sort_by : 'name';
-  const validatedSortOrder = validSortOrders.includes(sort_order.toLowerCase()) ? sort_order.toLowerCase() : 'asc';
+  const validatedSortOrder = validSortOrders.includes(sort_order.toLowerCase())
+    ? sort_order.toLowerCase()
+    : 'asc';
 
   try {
     // Build filter conditions
@@ -96,18 +93,17 @@ export const getFolderHierarchy = async (options = {}) => {
     }
     if (date) {
       filterConditions.push('updated_at >= ?');
-      let newDate = new Date(date)
+      let newDate = new Date(date);
       newDate.setHours(0, 0, 0, 0);
       filterParams.push(newDate);
     }
-    
-    const whereClause = filterConditions.length > 0 
-      ? `AND ${filterConditions.join(' AND ')}` 
-      : '';
+
+    const whereClause = filterConditions.length > 0 ? `AND ${filterConditions.join(' AND ')}` : '';
     console.log();
-    
+
     // Get root folders and files with filters
-    const rootQuery = db.raw(`
+    const rootQuery = db.raw(
+      `
       WITH RECURSIVE folder_tree AS (
         -- Base case: root folders
         SELECT 
@@ -139,7 +135,10 @@ export const getFolderHierarchy = async (options = {}) => {
           CONCAT(ft.path, ',', f.id) as path
         FROM folders f
         INNER JOIN folder_tree ft ON f.parent_id = ft.id
-        ${whereClause.replace('name', 'f.name').replace('description', 'f.description').replace('updated_at', 'f.updated_at')}
+        ${whereClause
+          .replace('name', 'f.name')
+          .replace('description', 'f.description')
+          .replace('updated_at', 'f.updated_at')}
       ),
       
       -- Get all files with filters
@@ -156,7 +155,14 @@ export const getFolderHierarchy = async (options = {}) => {
           CAST(f.folder_id AS CHAR(200)) as path,
           f.file_path
         FROM files f
-        ${whereClause ? `WHERE 1=1 ${whereClause.replace('name', 'f.name').replace('description', 'f.description').replace('updated_at', 'f.updated_at')}` : ''}
+        ${
+          whereClause
+            ? `WHERE 1=1 ${whereClause
+                .replace('name', 'f.name')
+                .replace('description', 'f.description')
+                .replace('updated_at', 'f.updated_at')}`
+            : ''
+        }
       ),
       
       -- Get folder counts
@@ -355,9 +361,20 @@ export const getFolderHierarchy = async (options = {}) => {
       ORDER BY 
         CASE WHEN fr.parent_id IS NULL THEN 0 ELSE 1 END,
         ${validatedSortBy} ${validatedSortOrder}
-    `, [...filterParams, ...filterParams, ...filterParams, ...filterParams,  ...filterParams, offset, offset + limit]);
-      
-    const totalCountQuery = db.raw(`
+    `,
+      [
+        ...filterParams,
+        ...filterParams,
+        ...filterParams,
+        ...filterParams,
+        ...filterParams,
+        offset,
+        offset + limit,
+      ]
+    );
+
+    const totalCountQuery = db.raw(
+      `
       SELECT 
         COUNT(*) as total,
         (SELECT COUNT(*) FROM folders WHERE parent_id IS NULL ${whereClause}) as total_folders,
@@ -367,12 +384,11 @@ export const getFolderHierarchy = async (options = {}) => {
         UNION ALL
         SELECT id FROM files WHERE folder_id IS NULL ${whereClause}
       ) as root_items
-    `, [...filterParams, ...filterParams, ...filterParams, ...filterParams]);
+    `,
+      [...filterParams, ...filterParams, ...filterParams, ...filterParams]
+    );
 
-    const [rootItems, totalCountResult] = await Promise.all([
-      rootQuery,
-      totalCountQuery
-    ]);
+    const [rootItems, totalCountResult] = await Promise.all([rootQuery, totalCountQuery]);
 
     const total = parseInt(totalCountResult[0][0].total);
     const totalFolders = parseInt(totalCountResult[0][0].total_folders);
@@ -384,14 +400,14 @@ export const getFolderHierarchy = async (options = {}) => {
       data: hierarchy,
       counts: {
         total_folders: totalFolders,
-        total_files: totalFiles
+        total_files: totalFiles,
       },
       pagination: {
         total,
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   } catch (error) {
     console.error('Error in getHierarchicalContent:', error);
@@ -408,11 +424,8 @@ export const getFolderHierarchy = async (options = {}) => {
 export const updateFolder = async (id, data) => {
   try {
     console.log('Updated folder:', id);
-    await db('folders')
-      .where('id', id)
-      .update(data)
-      
-    
+    await db('folders').where('id', id).update(data);
+
     const folder = await getFolderById(id);
 
     return folder;
@@ -422,38 +435,41 @@ export const updateFolder = async (id, data) => {
   }
 };
 
-export const checkFolderExists = async (id) => {
+export const checkFolderExists = async id => {
   const existingFolder = await getFolderById(id);
-  
+
   if (!existingFolder) {
     throw new Error('Folder not found');
   }
   return existingFolder;
-}
+};
 
-export const checkParentFolderExists = async (parent_id) => {
-  const existingParentFolder = await getFolderById(parent_id); 
+export const checkParentFolderExists = async parent_id => {
+  const existingParentFolder = await getFolderById(parent_id);
   if (!existingParentFolder) {
-    throw new Error( 'Parent folder not found' );
+    throw new Error('Parent folder not found');
   }
   return existingParentFolder;
-}
+};
 
 export const checkDuplicateFolderName = async (name, parent_id) => {
-  const existingFolder = await db('folders').where('name', name).where('parent_id', parent_id || null).first();
-  
+  const existingFolder = await db('folders')
+    .where('name', name)
+    .where('parent_id', parent_id || null)
+    .first();
+
   if (existingFolder) {
-    throw new Error( 'A folder with this name already exists in the same location' );
+    throw new Error('A folder with this name already exists in the same location');
   }
   return existingFolder;
-}
+};
 
 /**
  * Delete a folder and its contents
  * @param {number} id - Folder ID
  * @returns {Promise<Object>} Deletion result
  */
-export const deleteFolder = async (id) => {
+export const deleteFolder = async id => {
   try {
     // First check if folder exists
     const folder = await getFolderById(id);

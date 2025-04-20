@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
     const extension = path.extname(file.originalname);
     req.body.file_type = extension.slice(1);
     cb(null, `${uniqueId}${extension}`);
-  }
+  },
 });
 
 const fileFilter = (req, file, cb) => {
@@ -34,8 +34,8 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
 });
 
 const activeUploads = new Map();
@@ -45,7 +45,7 @@ const activeUploads = new Map();
  * @param {string} uploadId - Unique identifier for the upload
  * @returns {Object} Progress tracking object
  */
-export const trackUploadProgress = (uploadId) => {
+export const trackUploadProgress = uploadId => {
   return {
     start: () => {
       activeUploads.set(uploadId, { progress: 0, status: 'uploading', file: null });
@@ -67,25 +67,25 @@ export const trackUploadProgress = (uploadId) => {
       activeUploads.set(uploadId, {
         ...upload,
         progress: 100,
-        status: 'completed'
+        status: 'completed',
       });
     },
-    fail: (error) => {
+    fail: error => {
       activeUploads.set(uploadId, {
         progress: 0,
         status: 'failed',
-        error: error.message
+        error: error.message,
       });
     },
-    getStatus: () => activeUploads.get(uploadId)
+    getStatus: () => activeUploads.get(uploadId),
   };
 };
 
-export const getUploadStatus = (uploadId) => {
+export const getUploadStatus = uploadId => {
   return activeUploads.get(uploadId);
 };
 
-export const cleanupUpload = (uploadId) => {
+export const cleanupUpload = uploadId => {
   activeUploads.delete(uploadId);
 };
 
@@ -94,7 +94,7 @@ export const cleanupUpload = (uploadId) => {
  * @param {number} id - File ID
  * @returns {Promise<Object>} Deletion result
  */
-export const deleteFile = async (id) => {
+export const deleteFile = async id => {
   try {
     // First check if file exists
     await findFileById(id);
@@ -112,7 +112,7 @@ export const deleteFile = async (id) => {
  * @param {Object} fileData - File data
  * @returns {Promise<Object>} Inserted file record
  */
-export const insertFile = async (fileData) => {
+export const insertFile = async fileData => {
   try {
     const { name, type, folder_id, file_path, size, description } = fileData;
     const [file] = await db('files').insert({
@@ -121,7 +121,7 @@ export const insertFile = async (fileData) => {
       folder_id,
       file_path,
       size,
-      description
+      description,
     });
 
     return file;
@@ -129,14 +129,14 @@ export const insertFile = async (fileData) => {
     console.error('Error inserting file:', error);
     throw error;
   }
-}
+};
 
 /**
  * Find a file by its ID
  * @param {number} id - File ID
  * @returns {Promise<Object>} File record
  */
-export const findFileById = async (id) => {
+export const findFileById = async id => {
   try {
     const file = await db('files').where('id', id).first();
     if (!file) {
@@ -147,4 +147,4 @@ export const findFileById = async (id) => {
     console.error('Error finding file:', error);
     throw error;
   }
-}
+};

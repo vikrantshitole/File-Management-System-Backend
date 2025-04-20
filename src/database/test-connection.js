@@ -5,7 +5,7 @@ async function testConnection() {
     // Test the connection
     await db.raw('SELECT 1');
     console.log('✅ Database connection successful!');
-    
+
     // Check if tables exist
     const tables = await db.raw('SHOW TABLES');
     console.log('\n📋 Existing tables:');
@@ -16,7 +16,7 @@ async function testConnection() {
         console.log(`   - ${Object.values(table)[0]}`);
       });
     }
-    
+
     // Close the connection
     await db.destroy();
     console.log('\n✅ Database connection closed successfully.');
@@ -26,4 +26,4 @@ async function testConnection() {
   }
 }
 
-testConnection(); 
+testConnection();

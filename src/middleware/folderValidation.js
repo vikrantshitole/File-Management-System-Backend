@@ -1,13 +1,12 @@
 export const validateCreateFolder = (req, res, next) => {
-    
-  const { name=null, parent_id=null, description=null } = req.body;
+  const { name = null, parent_id = null, description = null } = req.body;
 
   // Check if name is provided
   if (!name.trim()) {
     return res.status(400).json({
       status: 'error',
       message: 'Folder name is required',
-      code: 'FOLDER_NAME_REQUIRED'
+      code: 'FOLDER_NAME_REQUIRED',
     });
   }
 
@@ -16,7 +15,7 @@ export const validateCreateFolder = (req, res, next) => {
     return res.status(400).json({
       status: 'error',
       message: 'Folder name must be between 1 and 255 characters',
-      code: 'INVALID_FOLDER_NAME_LENGTH'
+      code: 'INVALID_FOLDER_NAME_LENGTH',
     });
   }
 
@@ -25,8 +24,9 @@ export const validateCreateFolder = (req, res, next) => {
   if (!nameRegex.test(name)) {
     return res.status(400).json({
       status: 'error',
-      message: 'Folder name can only contain letters, numbers, spaces, and the following special characters: - _ .',
-      code: 'INVALID_FOLDER_NAME_FORMAT'
+      message:
+        'Folder name can only contain letters, numbers, spaces, and the following special characters: - _ .',
+      code: 'INVALID_FOLDER_NAME_FORMAT',
     });
   }
 
@@ -35,19 +35,18 @@ export const validateCreateFolder = (req, res, next) => {
     return res.status(400).json({
       status: 'error',
       message: 'Folder description cannot be empty',
-      code: 'EMPTY_FOLDER_DESCRIPTION'
+      code: 'EMPTY_FOLDER_DESCRIPTION',
     });
   }
-  
+
   // Validate description if provided
   if (description !== null && description !== undefined) {
-    
     // Validate description length
     if (description.length > 1000) {
       return res.status(400).json({
         status: 'error',
         message: 'Folder description must not exceed 1000 characters',
-        code: 'INVALID_FOLDER_DESCRIPTION_LENGTH'
+        code: 'INVALID_FOLDER_DESCRIPTION_LENGTH',
       });
     }
   }
@@ -59,7 +58,7 @@ export const validateCreateFolder = (req, res, next) => {
       return res.status(400).json({
         status: 'error',
         message: 'Parent folder ID must be a positive number',
-        code: 'INVALID_PARENT_ID'
+        code: 'INVALID_PARENT_ID',
       });
     }
     req.body.parent_id = parentIdNum; // Convert to number
@@ -82,19 +81,19 @@ export const validateFolderId = (req, res, next) => {
     return res.status(400).json({
       status: 'error',
       message: 'Folder ID is required',
-      code: 'FOLDER_ID_REQUIRED'
+      code: 'FOLDER_ID_REQUIRED',
     });
   }
 
   // Convert ID to number and validate
   const folderId = Number(id);
-  
+
   // Check if ID is a valid number
   if (isNaN(folderId)) {
     return res.status(400).json({
       status: 'error',
       message: 'Folder ID must be a number',
-      code: 'INVALID_FOLDER_ID_FORMAT'
+      code: 'INVALID_FOLDER_ID_FORMAT',
     });
   }
 
@@ -103,12 +102,12 @@ export const validateFolderId = (req, res, next) => {
     return res.status(400).json({
       status: 'error',
       message: 'Folder ID must be a positive integer',
-      code: 'INVALID_FOLDER_ID_VALUE'
+      code: 'INVALID_FOLDER_ID_VALUE',
     });
   }
 
   // Store the validated ID in the request object
   req.params.id = folderId;
-  
+
   next();
 };

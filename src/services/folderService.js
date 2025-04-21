@@ -283,7 +283,7 @@ export const getFolderHierarchy = async (options = {}) => {
           COALESCE(flc.file_count, 0) as file_count
         FROM folder_tree ft
         INNER JOIN paginated_roots pr ON 
-          ft.path LIKE CONCAT(pr.path, '%') 
+          ft.path LIKE CONCAT(pr.path, ',%') 
           AND ft.id != pr.id
         LEFT JOIN folder_counts fc ON ft.id = fc.parent_id
         LEFT JOIN file_counts flc ON ft.id = flc.folder_id
@@ -309,7 +309,7 @@ export const getFolderHierarchy = async (options = {}) => {
           af.parent_id = pr.id
           OR af.parent_id IN (
             SELECT id FROM folder_tree ft 
-            WHERE ft.path LIKE CONCAT(pr.path, '%')
+            WHERE ft.path LIKE CONCAT(pr.path, ',%')
           )
       )
       

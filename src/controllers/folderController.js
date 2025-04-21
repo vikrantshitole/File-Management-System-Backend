@@ -1,7 +1,6 @@
 import {
   createFolder,
   getFolderHierarchy,
-  getFolderById,
   updateFolder,
   checkFolderExists,
   checkParentFolderExists,
@@ -165,7 +164,7 @@ export const deleteFolderHandler = async (req, res) => {
         code: 'FOLDER_NOT_FOUND',
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: error.message,

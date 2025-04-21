@@ -81,10 +81,6 @@ export const trackUploadProgress = uploadId => {
   };
 };
 
-export const getUploadStatus = uploadId => {
-  return activeUploads.get(uploadId);
-};
-
 export const cleanupUpload = uploadId => {
   activeUploads.delete(uploadId);
 };
@@ -107,6 +103,7 @@ export const deleteFile = async id => {
     throw error;
   }
 };
+
 /**
  * Insert a file record into the database
  * @param {Object} fileData - File data

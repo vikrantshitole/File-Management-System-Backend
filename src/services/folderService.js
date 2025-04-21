@@ -15,7 +15,7 @@ export const createFolder = async folderData => {
     await checkParentFolderExists(parent_id);
   }
 
-  await checkDuplicateFolderName(name);
+  await checkDuplicateFolderName(name, parent_id);
 
   const [folderId] = await db('folders').insert({
     name,

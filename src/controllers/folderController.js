@@ -117,6 +117,23 @@ export const updateFolderHandler = async (req, res) => {
       data: updatedFolder,
     });
   } catch (error) {
+    if (error.message === 'Parent folder not found') {
+      // 404 Not Found: Folder does not exist
+      return res.status(404).json({
+        status: 'error',
+        message: error.message,
+        code: 'PARENT_FOLDER_NOT_FOUND',
+      });
+    }
+
+    if (error.message === 'A folder with this name already exists in the same location') {
+      // 409 Conflict: Duplicate record detected
+      return res.status(409).json({
+        status: 'error',
+        message: error.message,
+        code: 'FOLDER_ALREADY_EXISTS',
+      });
+    }
     console.error('Error updating folder:', error);
     res.status(500).json({
       success: false,
@@ -148,6 +165,7 @@ export const deleteFolderHandler = async (req, res) => {
         code: 'FOLDER_NOT_FOUND',
       });
     }
+    
     res.status(500).json({
       success: false,
       message: error.message,

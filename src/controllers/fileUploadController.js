@@ -9,7 +9,7 @@ import {
 } from '../services/fileUploadService.js';
 import {logger} from '../utils/logger.js';
 
-export const uploadFile = async (req, res) => {
+export const uploadFile = async (req, res, next) => {
   const uploadId = uuidv4();
   const tracker = trackUploadProgress(uploadId);
   tracker.start();
@@ -25,18 +25,26 @@ export const uploadFile = async (req, res) => {
     if (err) {
       logger.error('File upload error:', err);
       tracker.fail(err);
-      return res
-        .status(400)
-        .json({ error: err.message, success: false, code: 'FILE_UPLOAD_ERROR' });
+      next({
+        ...err,
+        statusCode: 400,
+        status: 'error',
+        message: 'An unexpected error occurred while uploading the file',
+        code: 'FILE_UPLOAD_ERROR',
+      });
     }
 
     if (!req.file) {
       const error = new Error('No file uploaded');
       logger.warn('No file uploaded');
       tracker.fail(error);
-      return res
-        .status(400)
-        .json({ error: error.message, success: false, code: 'FILE_UPLOAD_ERROR' });
+      next({
+        ...error,
+        statusCode: 400,
+        status: 'error',
+        message: 'No file uploaded',
+        code: 'FILE_UPLOAD_ERROR',
+      });
     }
 
     tracker.update(20, req.file);
@@ -64,7 +72,13 @@ export const uploadFile = async (req, res) => {
     } catch (error) {
       logger.error('Error inserting file into database:', error);
       tracker.fail(error);
-      res.status(500).json({ error: error.message, success: false, code: 'INTERNAL_SERVER_ERROR' });
+      next({
+        ...error,
+        statusCode: 500,
+        status: 'error',
+        message: 'An unexpected error occurred while uploading the file',
+        code: 'INTERNAL_SERVER_ERROR',
+      });
     }
   });
 };
@@ -112,7 +126,7 @@ export const getUploadProgress = (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const deleteFileHandler = async (req, res) => {
+export const deleteFileHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
     logger.debug('Deleting file:', { fileId: id });
@@ -127,15 +141,19 @@ export const deleteFileHandler = async (req, res) => {
     logger.error('Error in deleteFileHandler:', error);
     if (error.message === 'File not found') {
       logger.warn('File not found:', { fileId: req.params.id });
-      return res.status(404).json({
-        success: false,
-        message: error.message,
+      return next({
+        ...error,
+        statusCode: 404,
+        status: 'error',
+        message: error.message, 
         code: 'FILE_NOT_FOUND',
       });
     }
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    next({
+      ...error,
+      statusCode: 500,
+      status: 'error',
+      message: 'An unexpected error occurred while deleting the file',
       code: 'INTERNAL_SERVER_ERROR',
     });
   }

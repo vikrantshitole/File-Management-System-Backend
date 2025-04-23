@@ -14,7 +14,7 @@ import { logger } from '../utils/logger.js';
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const createFolderHandler = async (req, res) => {
+export const createFolderHandler = async (req, res, next) => {
   try {
     const { name, description, parent_id } = req.body;
 
@@ -30,7 +30,9 @@ export const createFolderHandler = async (req, res) => {
     if (error.message === 'Parent folder not found') {
       // 404 Not Found: Folder does not exis 
       logger.error(`Parent folder not found: ${error.message}`);
-      return res.status(404).json({
+      return next({
+        ...error,
+        statusCode: 404,
         status: 'error',
         message: error.message,
         code: 'PARENT_FOLDER_NOT_FOUND',
@@ -40,20 +42,24 @@ export const createFolderHandler = async (req, res) => {
     if (error.message === 'A folder with this name already exists in the same location') {
       // 409 Conflict: Duplicate record detected
       logger.error(`Duplicate folder name: ${error.message}`);
-      return res.status(409).json({
+      return next({
+        ...error,
         status: 'error',
         message: error.message,
+        statusCode: 409,
         code: 'FOLDER_ALREADY_EXISTS',
-      });
+      })
     }
 
     // Handle unexpected errors
     logger.error('Error creating folder:', error);
-    res.status(500).json({
+    next({
+      ...error,
+      statusCode: 500,
       status: 'error',
       message: 'An unexpected error occurred while creating the folder',
       code: 'INTERNAL_SERVER_ERROR',
-    });
+    })
   }
 };
 
@@ -62,7 +68,7 @@ export const createFolderHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const getFolderHierarchyHandler = async (req, res) => {
+export const getFolderHierarchyHandler = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, name, description, date, sort_by, sort_order } = req.query;
 
@@ -91,10 +97,11 @@ export const getFolderHierarchyHandler = async (req, res) => {
   } catch (error) {
     
     logger.error('Error getting folder hierarchy:', error);
-    next(error)
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    next({
+      ...error,
+      statusCode: 500,
+      status: 'error',
+      message: 'An unexpected error occurred while getting the folder hierarchy',
       code: 'INTERNAL_SERVER_ERROR',
     });
   }
@@ -105,7 +112,7 @@ export const getFolderHierarchyHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const updateFolderHandler = async (req, res) => {
+export const updateFolderHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, description, parent_id } = req.body;
@@ -140,7 +147,9 @@ export const updateFolderHandler = async (req, res) => {
     if (error.message === 'Parent folder not found') {
       // 404 Not Found: Folder does not exist
       logger.error(`Parent folder not found: ${error.message}`);
-      return res.status(404).json({
+      return next({
+        ...error,
+        statusCode: 404,
         status: 'error',
         message: error.message,
         code: 'PARENT_FOLDER_NOT_FOUND',
@@ -150,16 +159,20 @@ export const updateFolderHandler = async (req, res) => {
     if (error.message === 'A folder with this name already exists in the same location') {
       // 409 Conflict: Duplicate record detected
       logger.error(`Duplicate folder name: ${error.message}`);
-      return res.status(409).json({
+      return next({
+        ...error,
         status: 'error',
         message: error.message,
+        statusCode: 409,
         code: 'FOLDER_ALREADY_EXISTS',
       });
     }
     logger.error('Error updating folder:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
+    next({
+      ...error,
+      statusCode: 500,
+      status: 'error',
+      message: 'An unexpected error occurred while updating the folder',
       code: 'INTERNAL_SERVER_ERROR',
     });
   }
@@ -170,7 +183,7 @@ export const updateFolderHandler = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-export const deleteFolderHandler = async (req, res) => {
+export const deleteFolderHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
     logger.debug(`Deleting folder with ID: ${id}`);
@@ -183,17 +196,21 @@ export const deleteFolderHandler = async (req, res) => {
   } catch (error) {
     if (error.message === 'Folder not found') {
       logger.error(`Folder not found: ${error.message}`);
-      return res.status(404).json({
-        success: false,
+      return next({
+        ...error,
+        statusCode: 404,
+        status: 'error',
         message: error.message,
         code: 'FOLDER_NOT_FOUND',
       });
     }
     
     logger.error('Error in deleteFolderHandler:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    next({
+      ...error,
+      statusCode: 500,
+      status: 'error',
+      message: 'An unexpected error occurred while deleting the folder',
       code: 'INTERNAL_SERVER_ERROR',
     });
   }

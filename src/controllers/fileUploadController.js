@@ -7,11 +7,13 @@ import {
   insertFile,
   findFileById,
 } from '../services/fileUploadService.js';
+import {logger} from '../utils/logger.js';
 
 export const uploadFile = async (req, res) => {
   const uploadId = uuidv4();
   const tracker = trackUploadProgress(uploadId);
   tracker.start();
+  logger.debug('Starting file upload:', { uploadId });
 
   res.json({
     message: 'File uploaded successfully',
@@ -21,6 +23,7 @@ export const uploadFile = async (req, res) => {
 
   upload.single('file')(req, res, async err => {
     if (err) {
+      logger.error('File upload error:', err);
       tracker.fail(err);
       return res
         .status(400)
@@ -29,6 +32,7 @@ export const uploadFile = async (req, res) => {
 
     if (!req.file) {
       const error = new Error('No file uploaded');
+      logger.warn('No file uploaded');
       tracker.fail(error);
       return res
         .status(400)
@@ -36,6 +40,7 @@ export const uploadFile = async (req, res) => {
     }
 
     tracker.update(20, req.file);
+    logger.debug('File upload progress:', { uploadId, progress: 20 });
 
     try {
       const fileData = {
@@ -47,12 +52,17 @@ export const uploadFile = async (req, res) => {
       };
 
       tracker.update(40);
+      logger.debug('File upload progress:', { uploadId, progress: 40 });
+
       const fileId = await insertFile(fileData);
       tracker.update(80);
+      logger.debug('File upload progress:', { uploadId, progress: 80 });
+
       const insertedFile = await findFileById(fileId);
       tracker.complete(insertedFile);
+      logger.info('File uploaded successfully:', { fileId, uploadId });
     } catch (error) {
-      console.log('Error inserting file into database:', error);
+      logger.error('Error inserting file into database:', error);
       tracker.fail(error);
       res.status(500).json({ error: error.message, success: false, code: 'INTERNAL_SERVER_ERROR' });
     }
@@ -61,6 +71,7 @@ export const uploadFile = async (req, res) => {
 
 export const getUploadProgress = (req, res) => {
   const { uploadId } = req.params;
+  logger.debug('Getting upload progress:', { uploadId });
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -77,12 +88,13 @@ export const getUploadProgress = (req, res) => {
 
     if (status) {
       res.write(`data: ${JSON.stringify(status)}\n\n`);
-
+      logger.debug('Upload progress:', { uploadId, status });
       if (['completed', 'failed'].includes(status.status)) {
         res.write(`event: end\ndata: done\n\n`);
         cleanupUpload(uploadId);
         clearInterval(progressInterval);
         res.end();
+        logger.info('Upload progress stream ended:', { uploadId, status: status.status });
       }
     }
   };
@@ -92,6 +104,7 @@ export const getUploadProgress = (req, res) => {
   req.on('close', () => {
     clearInterval(progressInterval);
     cleanupUpload(uploadId);
+    logger.info('Upload progress stream closed by client:', { uploadId });
   });
 };
 /**
@@ -102,14 +115,18 @@ export const getUploadProgress = (req, res) => {
 export const deleteFileHandler = async (req, res) => {
   try {
     const { id } = req.params;
+    logger.debug('Deleting file:', { fileId: id });
+
     const result = await deleteFile(id);
+    logger.info('File deleted successfully:', { fileId: id });
     res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    console.error('Error in deleteFileHandler:', error);
+    logger.error('Error in deleteFileHandler:', error);
     if (error.message === 'File not found') {
+      logger.warn('File not found:', { fileId: req.params.id });
       return res.status(404).json({
         success: false,
         message: error.message,

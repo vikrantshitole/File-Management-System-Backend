@@ -1,5 +1,6 @@
 import db from '../database/database.js';
 import { buildHierarchy } from '../utils/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Create a new folder
@@ -15,13 +16,19 @@ export const createFolder = async folderData => {
     await checkParentFolderExists(parent_id);
   }
 
+  logger.debug(`Checking for duplicate folder name: ${name}`);      
+
   await checkDuplicateFolderName(name, parent_id);
+
+  logger.debug(`Inserting folder into database: ${name}`);
 
   const [folderId] = await db('folders').insert({
     name,
     parent_id,
     description,
   });
+
+  logger.debug(`Folder created successfully: ${folderId}`);
 
   const folder = await getFolderById(folderId);
 
@@ -34,11 +41,11 @@ export const createFolder = async folderData => {
  * @returns {Promise<Object>} Folder
  */
 export const getFolderById = async id => {
+  logger.debug(`Retrieving folder by ID: ${id}`);
+
   const folder = await db('folders').where('id', id).first();
 
-  if (!folder) {
-    throw new Error('Folder not found');
-  }
+  logger.debug(`Retrieved folder: ${folder?.id}`);
 
   return folder;
 };
@@ -70,6 +77,7 @@ export const getFolderHierarchy = async (options = {}) => {
   const offset = (page - 1) * limit;
 
   // Validate sort parameters
+  logger.debug(`Validating sort parameters: ${sort_by}, ${sort_order}`);
   const validSortFields = ['name', 'created_at', 'updated_at'];
   const validSortOrders = ['asc', 'desc'];
 
@@ -77,6 +85,8 @@ export const getFolderHierarchy = async (options = {}) => {
   const validatedSortOrder = validSortOrders.includes(sort_order.toLowerCase())
     ? sort_order.toLowerCase()
     : 'asc';
+
+  logger.debug(`Validated sort parameters: ${validatedSortBy}, ${validatedSortOrder}`);
 
   try {
     // Build filter conditions
@@ -87,10 +97,12 @@ export const getFolderHierarchy = async (options = {}) => {
       filterConditions.push('name LIKE ?');
       filterParams.push(`%${name}%`);
     }
+    logger.debug(`Building filter conditions for description: ${description}`);
     if (description) {
       filterConditions.push('description LIKE ?');
       filterParams.push(`%${description}%`);
     }
+    logger.debug(`Building filter conditions for date: ${date}`);
     if (date) {
       filterConditions.push('updated_at >= ?');
       let newDate = new Date(date);
@@ -99,7 +111,8 @@ export const getFolderHierarchy = async (options = {}) => {
     }
 
     const whereClause = filterConditions.length > 0 ? `AND ${filterConditions.join(' AND ')}` : '';
-    console.log();
+    logger.debug(`Filter conditions: ${whereClause}`);
+    logger.debug(`Filter parameters: ${filterParams}`);
 
     // Get root folders and files with filters
     const rootQuery = db.raw(
@@ -373,6 +386,8 @@ export const getFolderHierarchy = async (options = {}) => {
       ]
     );
 
+    logger.debug(`Root query: ${rootQuery}`);     
+
     const totalCountQuery = db.raw(
       `
       SELECT 
@@ -388,13 +403,22 @@ export const getFolderHierarchy = async (options = {}) => {
       [...filterParams, ...filterParams, ...filterParams, ...filterParams]
     );
 
+    logger.debug(`Total count query: ${totalCountQuery}`);
+
     const [rootItems, totalCountResult] = await Promise.all([rootQuery, totalCountQuery]);
+
+    logger.debug(`Root items: ${rootItems}`);
+    logger.debug(`Total count result: ${totalCountResult}`);
 
     const total = parseInt(totalCountResult[0][0].total);
     const totalFolders = parseInt(totalCountResult[0][0].total_folders);
     const totalFiles = parseInt(totalCountResult[0][0].total_files);
 
+    logger.debug(`Building hierarchy`);
+
     const hierarchy = buildHierarchy(rootItems[0]);
+
+    logger.debug(`Hierarchy built: ${hierarchy}`);
 
     return {
       data: hierarchy,
@@ -410,7 +434,7 @@ export const getFolderHierarchy = async (options = {}) => {
       },
     };
   } catch (error) {
-    console.error('Error in getHierarchicalContent:', error);
+    logger.error('Error in getHierarchicalContent:', error);
     throw error;
   }
 };
@@ -423,14 +447,14 @@ export const getFolderHierarchy = async (options = {}) => {
  */
 export const updateFolder = async (id, data) => {
   try {
-    console.log('Updated folder:', id);
+    logger.debug(`Updating folder: ${id}`);
     await db('folders').where('id', id).update(data);
 
     const folder = await getFolderById(id);
 
     return folder;
   } catch (error) {
-    console.error('Error updating folder:', error);
+    logger.error('Error updating folder:', error);
     throw error;
   }
 };
@@ -481,7 +505,7 @@ export const deleteFolder = async id => {
 
     return { success: true, message: 'Folder and its contents deleted successfully' };
   } catch (error) {
-    console.error('Error deleting folder:', error);
+    logger.error('Error deleting folder:', error);
     throw error;
   }
 };

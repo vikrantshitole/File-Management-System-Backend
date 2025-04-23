@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../database/database.js';
-
+import { logger } from '../utils/logger.js';    
 const allowedExtensions = ['.pdf', '.png', '.docx', '.jpg', '.svg', '.gif', '.txt'];
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -11,22 +11,27 @@ const storage = multer.diskStorage({
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
+    logger.debug(`Upload directory created: ${uploadDir}`);
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueId = uuidv4();
     const extension = path.extname(file.originalname);
     req.body.file_type = extension.slice(1);
+    logger.debug(`File extension: ${extension}`);
+    logger.debug(`File type: ${req.body.file_type}`);
     cb(null, `${uniqueId}${extension}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
-
+  logger.debug(`File extension: ${ext}`); 
   if (!allowedExtensions.includes(ext)) {
+    logger.warn(`File extension not allowed: ${ext}`);
     cb(new Error('Only pdf, png, docx, jpg, svg, gif, and txt files are allowed'), false);
   }
+  logger.debug(`File allowed: ${ext}`);
   cb(null, true);
 };
 
@@ -46,24 +51,27 @@ const activeUploads = new Map();
  * @returns {Object} Progress tracking object
  */
 export const trackUploadProgress = uploadId => {
+  logger.debug(`Tracking upload progress for: ${uploadId}`);
   return {
     start: () => {
       activeUploads.set(uploadId, { progress: 0, status: 'uploading', file: null });
+      logger.debug(`Upload started: ${uploadId}`);
     },
     update: (progress, file) => {
+      logger.debug(`Updating upload progress for: ${uploadId}, progress: ${progress}`);
       const upload = activeUploads.get(uploadId);
       if (upload) {
         upload.progress = progress;
         if (file) {
           upload.file = file;
         }
-
+        logger.debug(`Upload file updated: ${uploadId}`);
         activeUploads.set(uploadId, upload);
       }
     },
     complete: () => {
       const upload = activeUploads.get(uploadId);
-
+      logger.debug(`Upload completed: ${uploadId}`);
       activeUploads.set(uploadId, {
         ...upload,
         progress: 100,
@@ -71,6 +79,7 @@ export const trackUploadProgress = uploadId => {
       });
     },
     fail: error => {
+      logger.debug(`Upload failed: ${uploadId}`);
       activeUploads.set(uploadId, {
         progress: 0,
         status: 'failed',
@@ -82,6 +91,7 @@ export const trackUploadProgress = uploadId => {
 };
 
 export const cleanupUpload = uploadId => {
+  logger.debug(`Cleaning up upload: ${uploadId}`);
   activeUploads.delete(uploadId);
 };
 
@@ -96,10 +106,11 @@ export const deleteFile = async id => {
     await findFileById(id);
 
     await db('files').where('id', id).delete();
+    logger.debug(`File deleted: ${id}`);
 
     return { success: true, message: 'File deleted successfully' };
   } catch (error) {
-    console.error('Error deleting file:', error);
+    logger.error('Error deleting file:', error);
     throw error;
   }
 };
@@ -112,6 +123,7 @@ export const deleteFile = async id => {
 export const insertFile = async fileData => {
   try {
     const { name, type, folder_id, file_path, size, description } = fileData;
+    logger.debug(`Inserting file: ${name}, type: ${type}, folder_id: ${folder_id}, file_path: ${file_path}, size: ${size}, description: ${description}`);
     const [file] = await db('files').insert({
       name,
       type,
@@ -121,9 +133,11 @@ export const insertFile = async fileData => {
       description,
     });
 
+    logger.debug(`File inserted: ${file}`);
+
     return file;
   } catch (error) {
-    console.error('Error inserting file:', error);
+    logger.error('Error inserting file:', error);
     throw error;
   }
 };
@@ -135,13 +149,17 @@ export const insertFile = async fileData => {
  */
 export const findFileById = async id => {
   try {
+    logger.debug(`Finding file by ID: ${id}`);
     const file = await db('files').where('id', id).first();
+    logger.debug(`File found: ${file?.id}`);
     if (!file) {
+      logger.warn('File not found');
       throw new Error('File not found');
     }
+    logger.debug(`Returning file: ${file}`);
     return file;
   } catch (error) {
-    console.error('Error finding file:', error);
+    logger.error('Error finding file:', error);
     throw error;
   }
 };

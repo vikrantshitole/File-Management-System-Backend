@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import routes from './routes/index.js';
 import errorHandler from './middleware/errorHandler.js';
 import { join } from 'path';
+import { requestLogger, responseLogger } from './utils/logger.js';
 
 const app = express();
 
@@ -12,8 +13,11 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the uploads directory
+// Serve static files from the uploads directory\
 app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
+app.use(requestLogger);
+app.use(responseLogger);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the File Management System API' });

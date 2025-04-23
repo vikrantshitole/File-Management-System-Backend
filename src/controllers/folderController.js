@@ -7,6 +7,7 @@ import {
   checkDuplicateFolderName,
   deleteFolder,
 } from '../services/folderService.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Create a new folder
@@ -17,12 +18,18 @@ export const createFolderHandler = async (req, res) => {
   try {
     const { name, description, parent_id } = req.body;
 
+    logger.debug(`Creating folder: ${name}, description: ${description}, parent_id: ${parent_id}`);
+
     const folder = await createFolder(req.body);
+
+    logger.info(`Folder created successfully: ${folder.id}`);
+    
     res.status(201).json(folder);
   } catch (error) {
     // Handle specific error cases
     if (error.message === 'Parent folder not found') {
-      // 404 Not Found: Folder does not exist
+      // 404 Not Found: Folder does not exis 
+      logger.error(`Parent folder not found: ${error.message}`);
       return res.status(404).json({
         status: 'error',
         message: error.message,
@@ -32,6 +39,7 @@ export const createFolderHandler = async (req, res) => {
 
     if (error.message === 'A folder with this name already exists in the same location') {
       // 409 Conflict: Duplicate record detected
+      logger.error(`Duplicate folder name: ${error.message}`);
       return res.status(409).json({
         status: 'error',
         message: error.message,
@@ -40,7 +48,7 @@ export const createFolderHandler = async (req, res) => {
     }
 
     // Handle unexpected errors
-    console.error('Error creating folder:', error);
+    logger.error('Error creating folder:', error);
     res.status(500).json({
       status: 'error',
       message: 'An unexpected error occurred while creating the folder',
@@ -68,8 +76,12 @@ export const getFolderHierarchyHandler = async (req, res) => {
       sort_order,
     };
 
-    const result = await getFolderHierarchy(options);
+    logger.debug(`Retrieving folder hierarchy with options: ${JSON.stringify(options)}`);
 
+    const result = await getFolderHierarchy(options);
+    
+    logger.info(`Retrieved folder hierarchy with ${result.data.length} root folders`);
+    
     res.json({
       success: true,
       data: result.data,
@@ -77,7 +89,9 @@ export const getFolderHierarchyHandler = async (req, res) => {
       counts: result.counts,
     });
   } catch (error) {
-    console.error('Error in getHierarchicalContentHandler:', error);
+    
+    logger.error('Error getting folder hierarchy:', error);
+    next(error)
     res.status(500).json({
       success: false,
       message: error.message,
@@ -96,13 +110,19 @@ export const updateFolderHandler = async (req, res) => {
     const { id } = req.params;
     const { name, description, parent_id } = req.body;
 
+    logger.debug(`Updating folder with ID: ${id}, name: ${name}, description: ${description}, parent_id: ${parent_id}`);
+
     await checkFolderExists(id);
 
+    logger.debug(`Checking if parent folder exists: ${parent_id}`);
     if (parent_id) {
       await checkParentFolderExists(parent_id);
     }
 
+    logger.debug(`Checking for duplicate folder name: ${name}`);
     await checkDuplicateFolderName(name, parent_id);
+
+    logger.debug(`Updating folder: ${id}`);
     // Update the folder
     const updatedFolder = await updateFolder(id, {
       name,
@@ -111,6 +131,7 @@ export const updateFolderHandler = async (req, res) => {
       updated_at: new Date(),
     });
 
+    logger.info(`Folder Updated Successfully: ${updatedFolder.id}`)
     res.json({
       success: true,
       data: updatedFolder,
@@ -118,6 +139,7 @@ export const updateFolderHandler = async (req, res) => {
   } catch (error) {
     if (error.message === 'Parent folder not found') {
       // 404 Not Found: Folder does not exist
+      logger.error(`Parent folder not found: ${error.message}`);
       return res.status(404).json({
         status: 'error',
         message: error.message,
@@ -127,13 +149,14 @@ export const updateFolderHandler = async (req, res) => {
 
     if (error.message === 'A folder with this name already exists in the same location') {
       // 409 Conflict: Duplicate record detected
+      logger.error(`Duplicate folder name: ${error.message}`);
       return res.status(409).json({
         status: 'error',
         message: error.message,
         code: 'FOLDER_ALREADY_EXISTS',
       });
     }
-    console.error('Error updating folder:', error);
+    logger.error('Error updating folder:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -150,21 +173,24 @@ export const updateFolderHandler = async (req, res) => {
 export const deleteFolderHandler = async (req, res) => {
   try {
     const { id } = req.params;
+    logger.debug(`Deleting folder with ID: ${id}`);
     const result = await deleteFolder(id);
+    logger.info(`Folder deleted successfully: ${id}`);
     res.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    console.error('Error in deleteFolderHandler:', error);
     if (error.message === 'Folder not found') {
+      logger.error(`Folder not found: ${error.message}`);
       return res.status(404).json({
         success: false,
         message: error.message,
         code: 'FOLDER_NOT_FOUND',
       });
     }
-
+    
+    logger.error('Error in deleteFolderHandler:', error);
     res.status(500).json({
       success: false,
       message: error.message,

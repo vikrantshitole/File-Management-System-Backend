@@ -1,5 +1,6 @@
 import app from './app.js';
 import db from './database/database.js';
+import {logger} from './utils/logger.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -7,13 +8,13 @@ const PORT = process.env.PORT || 3000;
 async function startServer() {
   try {
     await db.raw('SELECT 1');
-    console.log('✅ Database connection successful!');
+    logger.info('Database connection successful');
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+      logger.info(`Server is running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+    logger.error('Database connection failed:', error);
     process.exit(1);
   }
 }

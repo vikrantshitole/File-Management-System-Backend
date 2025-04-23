@@ -1,6 +1,7 @@
-import db from '../database/database.js';
+// import db from '../database/database.js';
 import { buildHierarchy } from '../utils/index.js';
 import { logger } from '../utils/logger.js';
+const db = {}
 
 /**
  * Create a new folder

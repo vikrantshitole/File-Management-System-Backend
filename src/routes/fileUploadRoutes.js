@@ -4,13 +4,14 @@ import {
   getUploadProgress,
   deleteFileHandler,
 } from '../controllers/fileUploadController.js';
+import { validateDeleteFile, validateUploadId } from '../middleware/folderValidation.js';
 
 const router = express.Router();
 
 router.post('/upload', uploadFile);
 
-router.get('/progress/:uploadId', getUploadProgress);
+router.get('/progress/:uploadId', validateUploadId, getUploadProgress);
 
-router.delete('/:id', deleteFileHandler);
+router.delete('/:id', validateDeleteFile, deleteFileHandler);
 
 export default router;

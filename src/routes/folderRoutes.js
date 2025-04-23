@@ -5,16 +5,16 @@ import {
   updateFolderHandler,
   deleteFolderHandler,
 } from '../controllers/folderController.js';
-import { validateCreateFolder } from '../middleware/folderValidation.js';
+import { validateCreateFolder, validateDeleteFolder, validateGetFolderHierarchy, validateUpdateFolder } from '../middleware/folderValidation.js';
 
 const router = express.Router();
 
 router.post('/create', validateCreateFolder, createFolderHandler);
 
-router.get('/', getFolderHierarchyHandler);
+router.get('/',validateGetFolderHierarchy, getFolderHierarchyHandler);
 
-router.put('/update/:id', validateCreateFolder, updateFolderHandler);
+router.put('/update/:id', validateUpdateFolder, updateFolderHandler);
 
-router.delete('/:id', deleteFolderHandler);
+router.delete('/:id', validateDeleteFolder, deleteFolderHandler);
 
 export default router;

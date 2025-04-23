@@ -5,14 +5,24 @@ import routes from './routes/index.js';
 import errorHandler from './middleware/errorHandler.js';
 import { join } from 'path';
 import { requestLogger, responseLogger } from './utils/logger.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (process.env.FRONTEND_URL === origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
+app.use(cors(corsOptions));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // Serve static files from the uploads directory\
 app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 

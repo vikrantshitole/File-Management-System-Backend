@@ -1,9 +1,8 @@
-import {logger} from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 export const validateCreateFolder = (req, _, next) => {
-
   // Check if name is provided
-  const validationResult = validateCreateOrUpdateFolder(req,true);
+  const validationResult = validateCreateOrUpdateFolder(req, true);
   if (validationResult) {
     return next(validationResult);
   }
@@ -20,7 +19,7 @@ export const validateFolderId = (req, _, next) => {
   const { id } = req.params;
 
   // Check if ID is provided
-  let validationResult = validateId(id,'Folder ID');
+  let validationResult = validateId(id, 'Folder ID');
   if (validationResult) {
     return next(validationResult);
   }
@@ -32,21 +31,21 @@ export const validateUploadId = (req, _, next) => {
   const { uploadId } = req.params;
 
   if (!uploadId) {
-    logger.warn('Missing uploadId parameter');  
+    logger.warn('Missing uploadId parameter');
     return next({
       status: 'error',
       statusCode: 400,
       message: 'Upload ID is required',
-      code: 'UPLOAD_ID_REQUIRED'
+      code: 'UPLOAD_ID_REQUIRED',
     });
-  } 
+  }
   if (!isValidUUID(uploadId)) {
     logger.warn('Invalid uploadId parameter');
     return next({
       status: 'error',
       statusCode: 400,
-      message: 'Upload ID must be a valid UUID',  
-      code: 'INVALID_UPLOAD_ID_FORMAT'
+      message: 'Upload ID must be a valid UUID',
+      code: 'INVALID_UPLOAD_ID_FORMAT',
     });
   }
   next();
@@ -67,7 +66,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Page is required',
-      code: 'PAGE_PARAMETER_REQUIRED'
+      code: 'PAGE_PARAMETER_REQUIRED',
     });
   }
 
@@ -78,7 +77,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Page must be a positive number',
-      code: 'INVALID_PAGE_PARAMETER'
+      code: 'INVALID_PAGE_PARAMETER',
     });
   }
   if (!limit) {
@@ -87,7 +86,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Limit is required',
-      code: 'LIMIT_PARAMETER_REQUIRED'
+      code: 'LIMIT_PARAMETER_REQUIRED',
     });
   }
   // Validate limit
@@ -97,7 +96,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Limit must be a positive number between 1 and 100',
-      code: 'INVALID_LIMIT_PARAMETER'
+      code: 'INVALID_LIMIT_PARAMETER',
     });
   }
 
@@ -108,7 +107,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Name must be a string with maximum length of 255 characters',
-      code: 'INVALID_NAME_PARAMETER'
+      code: 'INVALID_NAME_PARAMETER',
     });
   }
 
@@ -119,7 +118,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'Description must be a string with maximum length of 1000 characters',
-      code: 'INVALID_DESCRIPTION_PARAMETER'
+      code: 'INVALID_DESCRIPTION_PARAMETER',
     });
   }
 
@@ -130,7 +129,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'date must be a valid date in ISO format',
-      code: 'INVALID_DATE_PARAMETER'
+      code: 'INVALID_DATE_PARAMETER',
     });
   }
 
@@ -140,7 +139,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'sort_by is required',
-      code: 'SORT_BY_PARAMETER_REQUIRED'  
+      code: 'SORT_BY_PARAMETER_REQUIRED',
     });
   }
 
@@ -151,7 +150,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'sort_by must be one of: name, created_at, updated_at',
-      code: 'INVALID_SORT_BY_PARAMETER'
+      code: 'INVALID_SORT_BY_PARAMETER',
     });
   }
 
@@ -161,7 +160,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'sort_order is required',
-      code: 'SORT_ORDER_PARAMETER_REQUIRED' 
+      code: 'SORT_ORDER_PARAMETER_REQUIRED',
     });
   }
 
@@ -172,7 +171,7 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       status: 'error',
       statusCode: 400,
       message: 'sort_order must be either asc or desc',
-      code: 'INVALID_SORT_ORDER_PARAMETER'
+      code: 'INVALID_SORT_ORDER_PARAMETER',
     });
   }
 
@@ -189,13 +188,13 @@ export const validateUpdateFolder = (req, _, next) => {
   const { id } = req.params;
 
   // Validate folder ID
-  let validationResult = validateId(id,'Folder ID');
+  let validationResult = validateId(id, 'Folder ID');
   if (validationResult) {
     return next(validationResult);
   }
 
   // Validate name and description
-  validationResult = validateCreateOrUpdateFolder(req,false);
+  validationResult = validateCreateOrUpdateFolder(req, false);
   if (validationResult) {
     return next(validationResult);
   }
@@ -212,15 +211,13 @@ export const validateUpdateFolder = (req, _, next) => {
 export const validateDeleteFolder = (req, _, next) => {
   const { id } = req.params;
 
-  let validationResult = validateId(id,'Folder ID');
+  let validationResult = validateId(id, 'Folder ID');
   if (validationResult) {
     return next(validationResult);
   }
 
   next();
 };
-
-
 
 /**
  * Validate deleteFolder request
@@ -231,7 +228,7 @@ export const validateDeleteFolder = (req, _, next) => {
 export const validateDeleteFile = (req, _, next) => {
   const { id } = req.params;
 
-  let validationResult = validateId(id,"File ID");
+  let validationResult = validateId(id, 'File ID');
   if (validationResult) {
     return next(validationResult);
   }
@@ -244,11 +241,10 @@ export const validateDeleteFile = (req, _, next) => {
  * @param {string} dateString - The string to validate
  * @returns {boolean} - True if valid date, false otherwise
  */
-const isValidDate = (dateString) => {
+const isValidDate = dateString => {
   const date = new Date(dateString);
   return date instanceof Date && !isNaN(date);
 };
-
 
 const validateCreateOrUpdateFolder = (req, isCreate = false) => {
   const { name, description, parent_id } = req.body;
@@ -260,7 +256,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
       statusCode: 400,
       message: 'Folder name is required',
       code: 'FOLDER_NAME_REQUIRED',
-    }
+    };
   }
   if (!isCreate && !name.trim() && !description.trim()) {
     logger.warn('Missing folder name or description');
@@ -269,7 +265,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
       statusCode: 400,
       message: 'Folder name or description is required',
       code: 'FOLDER_NAME_OR_DESCRIPTION_REQUIRED',
-    } 
+    };
   }
   // Validate name length
   if (name.length < 1 || name.length > 255) {
@@ -279,7 +275,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
       statusCode: 400,
       message: 'Folder name must be between 1 and 255 characters',
       code: 'INVALID_FOLDER_NAME_LENGTH',
-    }
+    };
   }
 
   // Validate name format (alphanumeric, spaces, and common special characters)
@@ -292,7 +288,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
       message:
         'Folder name can only contain letters, numbers, spaces, and the following special characters: - _ .',
       code: 'INVALID_FOLDER_NAME_FORMAT',
-    }
+    };
   }
 
   // Check if description is empty or only whitespace
@@ -303,7 +299,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
       statusCode: 400,
       message: 'Folder description cannot be empty',
       code: 'EMPTY_FOLDER_DESCRIPTION',
-    }
+    };
   }
 
   // Validate description if provided
@@ -315,7 +311,7 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
         status: 'error',
         message: 'Folder description must not exceed 1000 characters',
         code: 'INVALID_FOLDER_DESCRIPTION_LENGTH',
-      }
+      };
     }
   }
 
@@ -328,13 +324,13 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
         statusCode: 400,
         message: 'Parent folder ID must be a valid UUID',
         code: 'INVALID_PARENT_ID',
-      }
+      };
     }
   }
   return;
 };
 
-const validateId= (id,field_name) => {
+const validateId = (id, field_name) => {
   // / Validate folder ID
   if (!id) {
     logger.warn(`Missing ${field_name}`);
@@ -342,8 +338,8 @@ const validateId= (id,field_name) => {
       status: 'error',
       statusCode: 400,
       message: `${field_name} is required`,
-      code: 'FOLDER_ID_REQUIRED'
-    }
+      code: 'FOLDER_ID_REQUIRED',
+    };
   }
 
   // Check if ID is a valid number
@@ -354,12 +350,12 @@ const validateId= (id,field_name) => {
       statusCode: 400,
       message: `${field_name} must be a valid UUID`,
       code: 'INVALID_FOLDER_ID_FORMAT',
-    }
+    };
   }
 
   return;
-}
+};
 
-const isValidUUID = (uuid) => {
+const isValidUUID = uuid => {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(uuid);
-}
+};

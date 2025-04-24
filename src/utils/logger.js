@@ -42,16 +42,17 @@ const logger = winston.createLogger({
 
 // Create a stream object for morgan
 logger.stream = {
-  write: (message) => {
+  write: message => {
     logger.info(message.trim());
   },
 };
 
 // Middleware: Request logger
 function requestLogger(req, res, next) {
-  const payload = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length
-    ? ` | Payload: ${JSON.stringify(req.body)}`
-    : '';
+  const payload =
+    ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length
+      ? ` | Payload: ${JSON.stringify(req.body)}`
+      : '';
 
   logger.info(`${req.method} ${req.originalUrl} - Incoming Request${payload}`);
   req._startTime = Date.now();
@@ -62,7 +63,7 @@ function requestLogger(req, res, next) {
 function responseLogger(req, res, next) {
   let errorData = null;
 
-  res.on('error', (err) => {
+  res.on('error', err => {
     errorData = err;
   });
 

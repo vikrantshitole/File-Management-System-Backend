@@ -23,12 +23,12 @@ export const createFolderHandler = async (req, res, next) => {
     const folder = await createFolder(req.body);
 
     logger.info(`Folder created successfully: ${folder.id}`);
-    
+
     res.status(201).json(folder);
   } catch (error) {
     // Handle specific error cases
     if (error.message === 'Parent folder not found') {
-      // 404 Not Found: Folder does not exis 
+      // 404 Not Found: Folder does not exis
       logger.error(`Parent folder not found: ${error.message}`);
       return next({
         ...error,
@@ -48,7 +48,7 @@ export const createFolderHandler = async (req, res, next) => {
         message: error.message,
         statusCode: 409,
         code: 'FOLDER_ALREADY_EXISTS',
-      })
+      });
     }
 
     // Handle unexpected errors
@@ -59,7 +59,7 @@ export const createFolderHandler = async (req, res, next) => {
       status: 'error',
       message: 'An unexpected error occurred while creating the folder',
       code: 'INTERNAL_SERVER_ERROR',
-    })
+    });
   }
 };
 
@@ -85,9 +85,9 @@ export const getFolderHierarchyHandler = async (req, res, next) => {
     logger.debug(`Retrieving folder hierarchy with options: ${JSON.stringify(options)}`);
 
     const result = await getFolderHierarchy(options);
-    
+
     logger.info(`Retrieved folder hierarchy with ${result.data.length} root folders`);
-    
+
     res.json({
       success: true,
       data: result.data,
@@ -95,7 +95,6 @@ export const getFolderHierarchyHandler = async (req, res, next) => {
       counts: result.counts,
     });
   } catch (error) {
-    
     logger.error('Error getting folder hierarchy:', error);
     next({
       ...error,
@@ -115,9 +114,11 @@ export const getFolderHierarchyHandler = async (req, res, next) => {
 export const updateFolderHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, parent_id } = req.body;
+    const { name, description, parent_id = null } = req.body;
 
-    logger.debug(`Updating folder with ID: ${id}, name: ${name}, description: ${description}, parent_id: ${parent_id}`);
+    logger.debug(
+      `Updating folder with ID: ${id}, name: ${name}, description: ${description}, parent_id: ${parent_id}`
+    );
 
     await checkFolderExists(id);
 
@@ -131,14 +132,14 @@ export const updateFolderHandler = async (req, res, next) => {
 
     logger.debug(`Updating folder: ${id}`);
     // Update the folder
+
     const updatedFolder = await updateFolder(id, {
       name,
       description,
-      parent_id,
       updated_at: new Date(),
     });
 
-    logger.info(`Folder Updated Successfully: ${updatedFolder.id}`)
+    logger.info(`Folder Updated Successfully: ${updatedFolder.id}`);
     res.json({
       success: true,
       data: updatedFolder,
@@ -204,7 +205,7 @@ export const deleteFolderHandler = async (req, res, next) => {
         code: 'FOLDER_NOT_FOUND',
       });
     }
-    
+
     logger.error('Error in deleteFolderHandler:', error);
     next({
       ...error,

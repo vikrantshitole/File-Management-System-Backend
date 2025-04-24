@@ -7,7 +7,8 @@ import {
   insertFile,
   findFileById,
 } from '../services/fileUploadService.js';
-import {logger} from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
+
 
 export const uploadFile = async (req, res, next) => {
   const uploadId = uuidv4();
@@ -145,7 +146,7 @@ export const deleteFileHandler = async (req, res, next) => {
         ...error,
         statusCode: 404,
         status: 'error',
-        message: error.message, 
+        message: error.message,
         code: 'FILE_NOT_FOUND',
       });
     }

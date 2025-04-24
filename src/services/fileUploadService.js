@@ -4,9 +4,9 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 // import db from '../database/database.js';
 import File from '../models/File.js';
-import { logger } from '../utils/logger.js';    
+import { logger } from '../utils/logger.js';
 const allowedExtensions = ['.pdf', '.png', '.docx', '.jpg', '.svg', '.gif', '.txt'];
-const db = {}
+const db = {};
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = 'uploads';
@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  logger.debug(`File extension: ${ext}`); 
+  logger.debug(`File extension: ${ext}`);
   if (!allowedExtensions.includes(ext)) {
     logger.warn(`File extension not allowed: ${ext}`);
     cb(new Error('Only pdf, png, docx, jpg, svg, gif, and txt files are allowed'), false);
@@ -125,7 +125,9 @@ export const deleteFile = async id => {
 export const insertFile = async fileData => {
   try {
     const { name, type, folder_id, file_path, size, description } = fileData;
-    logger.debug(`Inserting file: ${name}, type: ${type}, folder_id: ${folder_id}, file_path: ${file_path}, size: ${size}, description: ${description}`);
+    logger.debug(
+      `Inserting file: ${name}, type: ${type}, folder_id: ${folder_id}, file_path: ${file_path}, size: ${size}, description: ${description}`
+    );
     const file = await File.create({
       name,
       type,

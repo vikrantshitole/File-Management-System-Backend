@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 // import db from '../database/database.js';
+import File from '../models/File.js';
 import { logger } from '../utils/logger.js';    
 const allowedExtensions = ['.pdf', '.png', '.docx', '.jpg', '.svg', '.gif', '.txt'];
 const db = {}
@@ -106,7 +107,7 @@ export const deleteFile = async id => {
     // First check if file exists
     await findFileById(id);
 
-    await db('files').where('id', id).delete();
+    await File.destroy({ where: { id } });
     logger.debug(`File deleted: ${id}`);
 
     return { success: true, message: 'File deleted successfully' };
@@ -125,7 +126,7 @@ export const insertFile = async fileData => {
   try {
     const { name, type, folder_id, file_path, size, description } = fileData;
     logger.debug(`Inserting file: ${name}, type: ${type}, folder_id: ${folder_id}, file_path: ${file_path}, size: ${size}, description: ${description}`);
-    const [file] = await db('files').insert({
+    const file = await File.create({
       name,
       type,
       folder_id,
@@ -151,7 +152,7 @@ export const insertFile = async fileData => {
 export const findFileById = async id => {
   try {
     logger.debug(`Finding file by ID: ${id}`);
-    const file = await db('files').where('id', id).first();
+    const file = await File.findByPk(id);
     logger.debug(`File found: ${file?.id}`);
     if (!file) {
       logger.warn('File not found');

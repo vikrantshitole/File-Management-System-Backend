@@ -321,17 +321,15 @@ const validateCreateOrUpdateFolder = (req, isCreate = false) => {
 
   // If parent_id is provided, validate it's a number
   if (parent_id !== undefined && parent_id !== null) {
-    const parentIdNum = Number(parent_id);
-    if (isNaN(parentIdNum) || parentIdNum < 1) {
+    if (!isValidUUID(parent_id)) {
       logger.warn('Invalid parent folder ID');
       return {
         status: 'error',
         statusCode: 400,
-        message: 'Parent folder ID must be a positive number',
+        message: 'Parent folder ID must be a valid UUID',
         code: 'INVALID_PARENT_ID',
       }
     }
-    req.body.parent_id = parentIdNum; // Convert to number
   }
   return;
 };
@@ -348,29 +346,17 @@ const validateId= (id,field_name) => {
     }
   }
 
-  const folderId = Number(id);
-
   // Check if ID is a valid number
-  if (isNaN(folderId)) {
+  if (!isValidUUID(id)) {
     logger.warn(`Invalid ${field_name} format`);
     return {
       status: 'error',
       statusCode: 400,
-      message: `${field_name} must be a number`,
+      message: `${field_name} must be a valid UUID`,
       code: 'INVALID_FOLDER_ID_FORMAT',
     }
   }
 
-  // Check if ID is a positive integer
-  if (!Number.isInteger(folderId) || folderId < 1) {
-    logger.warn(`Invalid ${field_name} value`);
-    return {
-      status: 'error',
-      statusCode: 400,
-      message: `${field_name} must be a positive integer`,
-      code: 'INVALID_FOLDER_ID_VALUE',
-    }
-  }
   return;
 }
 

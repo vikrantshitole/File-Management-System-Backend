@@ -62,11 +62,11 @@ export const uploadFile = async (req, res, next) => {
       tracker.update(40);
       logger.debug('File upload progress:', { uploadId, progress: 40 });
 
-      const fileId = await insertFile(fileData);
+      const insertedFile = await insertFile(fileData);
       tracker.update(80);
       logger.debug('File upload progress:', { uploadId, progress: 80 });
-
-      const insertedFile = await findFileById(fileId);
+      const fileId = insertedFile.id;
+      // const insertedFile = await findFileById(fileId);
       tracker.complete(insertedFile);
       logger.info('File uploaded successfully:', { fileId, uploadId });
     } catch (error) {

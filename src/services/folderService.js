@@ -203,7 +203,7 @@ export const deleteFolder = async id => {
     }
 
     await Folder.destroy({ where: { id } });
-    logger.debug(`Folder deleted: ${id}`);
+    logger.info(`Folder deleted: ${id}`);
 
     return { success: true, message: 'Folder and its contents deleted successfully' };
   } catch (error) {
@@ -259,12 +259,7 @@ export async function getAllRootItems(options = {}) {
       CREATE TEMPORARY TABLE ${tableName} AS
       SELECT 
         f.id,
-        f.name,
-        f.description,
-        f.created_at,
         f.updated_at,
-        f.parent_id,
-        NULL as folder_id,
         'folder' as type
       FROM folders f
       WHERE f.parent_id IS NULL
@@ -274,12 +269,7 @@ export async function getAllRootItems(options = {}) {
       
       SELECT 
         fi.id,
-        fi.name,
-        fi.description,
-        fi.created_at,
         fi.updated_at,
-        NULL as parent_id,
-        fi.folder_id,
         'file' as type
       FROM files fi
       WHERE fi.folder_id IS NULL
@@ -308,8 +298,7 @@ export async function getAllRootItems(options = {}) {
     logger.debug('Dropping temporary table');
     await sequelize.query(`DROP TABLE IF EXISTS ${tableName}`);
 
-    logger.debug(`Retrieved ${rootItems.length} items from temporary table`);
-    logger.debug('Sample of first item:', rootItems[0] || 'No items found');
+    logger.info(`Retrieved ${rootItems.length} items from temporary table`);
 
     if (rootItems.length === 0) {
       logger.warn('No items found in temporary table');

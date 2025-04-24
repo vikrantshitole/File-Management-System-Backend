@@ -46,17 +46,12 @@ class Folder extends Model {
       created_at: folder.created_at,
       updated_at: folder.updated_at,
       parent_id: folder.parent_id,
-      hierarchy_level: folder.hierarchy_level,
+      level: folder.hierarchy_level,
       hierarchy_path: folder.hierarchy_path,
       path,
-      children: [...children.filter(Boolean), ...folder.files.map(f => ({ ...f, children: [] }))],
+      type: 'folder',
+      children: [...children.filter(Boolean), ...folder.files.map(f => ({ ...f.toJSON(), children: [] }))],
     };
-  }
-
-  // Move folder to new parent
-  async moveTo(newParentId) {
-    this.parent_id = newParentId;
-    return this.save();
   }
 
   // Get hierarchy path

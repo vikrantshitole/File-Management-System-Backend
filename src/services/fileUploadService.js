@@ -13,22 +13,18 @@ const storage = multer.diskStorage({
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    logger.debug(`Upload directory created: ${uploadDir}`);
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueId = uuidv4();
     const extension = path.extname(file.originalname);
     req.body.file_type = extension.slice(1);
-    logger.debug(`File extension: ${extension}`);
-    logger.debug(`File type: ${req.body.file_type}`);
     cb(null, `${uniqueId}${extension}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  logger.debug(`File extension: ${ext}`);
   if (!allowedExtensions.includes(ext)) {
     logger.warn(`File extension not allowed: ${ext}`);
     cb(new Error('Only pdf, png, docx, jpg, svg, gif, and txt files are allowed'), false);
@@ -67,13 +63,12 @@ export const trackUploadProgress = uploadId => {
         if (file) {
           upload.file = file;
         }
-        logger.debug(`Upload file updated: ${uploadId}`);
         activeUploads.set(uploadId, upload);
       }
     },
     complete: () => {
       const upload = activeUploads.get(uploadId);
-      logger.debug(`Upload completed: ${uploadId}`);
+      logger.info(`Upload completed: ${uploadId}`);
       activeUploads.set(uploadId, {
         ...upload,
         progress: 100,
@@ -93,7 +88,7 @@ export const trackUploadProgress = uploadId => {
 };
 
 export const cleanupUpload = uploadId => {
-  logger.debug(`Cleaning up upload: ${uploadId}`);
+  logger.info(`Cleaning up upload: ${uploadId}`);
   activeUploads.delete(uploadId);
 };
 
@@ -108,7 +103,7 @@ export const deleteFile = async id => {
     await findFileById(id);
 
     await File.destroy({ where: { id } });
-    logger.debug(`File deleted: ${id}`);
+    logger.info(`File deleted: ${id}`);
 
     return { success: true, message: 'File deleted successfully' };
   } catch (error) {
@@ -137,7 +132,7 @@ export const insertFile = async fileData => {
       description,
     });
 
-    logger.debug(`File inserted: ${file}`);
+    logger.info(`File inserted: ${file.id}`);
 
     return file;
   } catch (error) {
@@ -155,12 +150,12 @@ export const findFileById = async id => {
   try {
     logger.debug(`Finding file by ID: ${id}`);
     const file = await File.findByPk(id);
-    logger.debug(`File found: ${file?.id}`);
+
     if (!file) {
       logger.warn('File not found');
       throw new Error('File not found');
     }
-    logger.debug(`Returning file: ${file}`);
+    logger.info(`Returning file: ${file}`);
     return file;
   } catch (error) {
     logger.error('Error finding file:', error);

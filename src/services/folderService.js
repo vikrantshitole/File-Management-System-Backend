@@ -18,8 +18,6 @@ export const createFolder = async folderData => {
     await checkParentFolderExists(parent_id);
   }
 
-  logger.debug(`Checking for duplicate folder name: ${name}`);
-
   await checkDuplicateFolderName(name, parent_id);
 
   logger.debug(`Inserting folder into database: ${name}`);
@@ -30,7 +28,7 @@ export const createFolder = async folderData => {
     description,
   });
 
-  logger.debug(`Folder created successfully: ${folder.id}`);
+  logger.info(`Folder created successfully: ${folder.id}`);
 
   return folder;
 };
@@ -45,7 +43,7 @@ export const getFolderById = async id => {
 
   const folder = await Folder.findByPk(id);
 
-  logger.debug(`Retrieved folder: ${folder?.id}`);
+  logger.info(`Retrieved folder: ${folder?.id}`);
 
   return folder;
 };
@@ -57,8 +55,6 @@ export const getFolderById = async id => {
  * @param {number} [options.limit=10] - Number of items per page
  * @param {string} [options.name] - Filter by folder name (partial match)
  * @param {string} [options.description] - Filter by folder description (partial match)
- * @param {string} [options.created_at_start] - Filter by creation date range start (YYYY-MM-DD)
- * @param {string} [options.created_at_end] - Filter by creation date range end (YYYY-MM-DD)
  * @param {string} [options.sort_by='name'] - Field to sort by (name, created_at, updated_at)
  * @param {string} [options.sort_order='asc'] - Sort order (asc, desc)
  * @returns {Promise<Object>} Paginated root folders with their complete subfolder hierarchy
@@ -86,10 +82,8 @@ export async function getFolderHierarchy(options = {}) {
       date,
     });
 
-    // Apply filters if provided
-    let filteredItems = [...rootItems.items];
-    const folderIds = filteredItems.filter(item => item.type === 'folder').map(item => item.id);
-    const fileIds = filteredItems.filter(item => item.type === 'file').map(item => item.id);
+    const folderIds = rootItems.items.filter(item => item.type === 'folder').map(item => item.id);
+    const fileIds = rootItems.items.filter(item => item.type === 'file').map(item => item.id);
 
     const [folders, files, folderCount, fileCount] = await Promise.all([
       Folder.findAll({
@@ -102,16 +96,13 @@ export async function getFolderHierarchy(options = {}) {
       Folder.count({ where: { parent_id: null } }),
       File.count({ where: { folder_id: null } }),
     ]);
-    for (const element of folders) {
-      console.log(await element.getDescendants());
-    }
     // Apply sorting
     let fullTree = await Promise.all(folders.map(folder => folder.getDescendants()));
     const folderMap = new Map(fullTree.map(f => [f.id, f]));
     const fileMap = new Map(files.map(f => [f.id, f]));
 
     // Construct items list in order
-    const items = filteredItems
+    const items = rootItems.items
       .map(element => {
         if (element.type === 'folder') {
           const folder = folderMap.get(element.id);
@@ -122,9 +113,8 @@ export async function getFolderHierarchy(options = {}) {
         }
         return null;
       })
-      .filter(Boolean); // Build the hierarchy
+      .filter(Boolean);
 
-    // Paginate the results
 
     return {
       data: items,
@@ -166,6 +156,7 @@ export const updateFolder = async (id, data) => {
 };
 
 export const checkFolderExists = async id => {
+  logger.debug(`Checking if folder exists: ${id}`);
   const existingFolder = await getFolderById(id);
 
   if (!existingFolder) {
@@ -183,6 +174,8 @@ export const checkParentFolderExists = async parent_id => {
 };
 
 export const checkDuplicateFolderName = async (name, parent_id) => {
+  
+  logger.debug(`Checking for duplicate folder name: ${name} in parent folder: ${parent_id}`);
   const existingFolder = await Folder.findOne({
     where: {
       name,
@@ -253,9 +246,8 @@ export async function getAllRootItems(options = {}) {
 
     if (date) {
       let dateCondition = new Date(date);
-      dateCondition.setHours(0, 0, 0, 0);
-
-      whereConditions.push(`updated_at >= ${date}`);
+      dateCondition.setHours(0, 0, 0, 0);      
+      whereConditions.push(`updated_at >= '${dateCondition.toISOString()}'`);
     }
 
     if (whereConditions.length > 0) {
@@ -334,13 +326,13 @@ export async function getAllRootItems(options = {}) {
     };
   } catch (error) {
     // Ensure temporary table is dropped even if there's an error
+    logger.error('Error in getAllRootItems:', error);
     try {
       await sequelize.query(`DROP TABLE IF EXISTS ${tableName}`);
     } catch (dropError) {
       logger.error('Error dropping temporary table:', dropError);
     }
 
-    logger.error('Error in getAllRootItems:', error);
     logger.error('Error details:', {
       message: error.message,
       stack: error.stack,

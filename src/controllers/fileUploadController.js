@@ -14,7 +14,6 @@ export const uploadFile = async (req, res, next) => {
   const uploadId = uuidv4();
   const tracker = trackUploadProgress(uploadId);
   tracker.start();
-  logger.debug('Starting file upload:', { uploadId });
 
   res.json({
     message: 'File uploaded successfully',
@@ -61,13 +60,13 @@ export const uploadFile = async (req, res, next) => {
       };
 
       tracker.update(40);
-      logger.debug('File upload progress:', { uploadId, progress: 40 });
 
       const insertedFile = await insertFile(fileData);
+
       tracker.update(80);
-      logger.debug('File upload progress:', { uploadId, progress: 80 });
+
       const fileId = insertedFile.id;
-      // const insertedFile = await findFileById(fileId);
+      
       tracker.complete(insertedFile);
       logger.info('File uploaded successfully:', { fileId, uploadId });
     } catch (error) {
@@ -133,7 +132,7 @@ export const deleteFileHandler = async (req, res, next) => {
     logger.debug('Deleting file:', { fileId: id });
 
     const result = await deleteFile(id);
-    logger.info('File deleted successfully:', { fileId: id });
+
     res.json({
       success: true,
       data: result,

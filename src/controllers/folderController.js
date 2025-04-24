@@ -22,8 +22,6 @@ export const createFolderHandler = async (req, res, next) => {
 
     const folder = await createFolder(req.body);
 
-    logger.info(`Folder created successfully: ${folder.id}`);
-
     res.status(201).json(folder);
   } catch (error) {
     // Handle specific error cases

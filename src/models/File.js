@@ -61,7 +61,6 @@ File.init(
   }
 );
 
-// Define associations
 File.associate = models => {
   File.belongsTo(models.Folder, { as: 'folder', foreignKey: 'folder_id' });
 };

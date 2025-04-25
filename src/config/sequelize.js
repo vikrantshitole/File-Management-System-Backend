@@ -23,6 +23,9 @@ const config = {
     acquire: 30000,
     idle: 10000,
   },
+  dialectOptions: {
+    multipleStatements: true,
+  },
 };
 
 const sequelize = new Sequelize(config);

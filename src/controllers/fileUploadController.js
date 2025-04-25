@@ -9,7 +9,6 @@ import {
 } from '../services/fileUploadService.js';
 import { logger } from '../utils/logger.js';
 
-
 export const uploadFile = async (req, res, next) => {
   const uploadId = uuidv4();
   const tracker = trackUploadProgress(uploadId);
@@ -66,7 +65,7 @@ export const uploadFile = async (req, res, next) => {
       tracker.update(80);
 
       const fileId = insertedFile.id;
-      
+
       tracker.complete(insertedFile);
       logger.info('File uploaded successfully:', { fileId, uploadId });
     } catch (error) {

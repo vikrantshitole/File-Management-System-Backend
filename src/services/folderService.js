@@ -115,7 +115,6 @@ export async function getFolderHierarchy(options = {}) {
       })
       .filter(Boolean);
 
-
     return {
       data: items,
       pagination: {
@@ -174,7 +173,6 @@ export const checkParentFolderExists = async parent_id => {
 };
 
 export const checkDuplicateFolderName = async (name, parent_id) => {
-  
   logger.debug(`Checking for duplicate folder name: ${name} in parent folder: ${parent_id}`);
   const existingFolder = await Folder.findOne({
     where: {
@@ -212,7 +210,6 @@ export const deleteFolder = async id => {
   }
 };
 
-
 /**
  * Get all items from the folder_files_root view
  * @returns {Promise<Object[]>} Array of root items (folders and files)
@@ -246,7 +243,7 @@ export async function getAllRootItems(options = {}) {
 
     if (date) {
       let dateCondition = new Date(date);
-      dateCondition.setHours(0, 0, 0, 0);      
+      dateCondition.setHours(0, 0, 0, 0);
       whereConditions.push(`updated_at >= '${dateCondition.toISOString()}'`);
     }
 
@@ -256,24 +253,29 @@ export async function getAllRootItems(options = {}) {
 
     // Create temporary table with filters
     const createTempTableQuery = `
-      CREATE TEMPORARY TABLE ${tableName} AS
-      SELECT 
-        f.id,
-        f.updated_at,
-        'folder' as type
-      FROM folders f
-      WHERE f.parent_id IS NULL
-      ${whereClause}
-      
-      UNION ALL
-      
-      SELECT 
-        fi.id,
-        fi.updated_at,
-        'file' as type
-      FROM files fi
-      WHERE fi.folder_id IS NULL
-      ${whereClause};
+CREATE TEMPORARY TABLE temp_folder_files_root (
+  id CHAR(36),
+  updated_at DATETIME,
+  type ENUM('folder', 'file')
+);
+
+INSERT INTO temp_folder_files_root (id, updated_at, type)
+SELECT 
+  f.id,
+  f.updated_at,
+  'folder' as type
+FROM folders f
+WHERE f.parent_id IS NULL
+${whereClause};
+
+INSERT INTO temp_folder_files_root (id, updated_at, type)
+SELECT 
+  fi.id,
+  fi.updated_at,
+  'file' as type
+FROM files fi
+WHERE fi.folder_id IS NULL
+${whereClause};
     `;
 
     logger.debug('Creating temporary table with filters');

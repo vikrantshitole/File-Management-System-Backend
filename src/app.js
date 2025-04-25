@@ -10,7 +10,7 @@ import { checkApiKey, dynamicCors } from './middleware/middleware.js';
 
 const app = express();
 
-app.use(cors(),dynamicCors, checkApiKey);
+app.use(cors(), dynamicCors, checkApiKey);
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -50,7 +50,7 @@ class Folder extends Model {
       hierarchy_path: folder.hierarchy_path,
       path,
       type: 'folder',
-      children: [...children.filter(Boolean), ...folder.files.map(f => ({ ...f.toJSON(), children: [] }))],
+      children: [...children.filter(Boolean), ...folder.files.map(f => ({ ...f.toJSON(), children: [],type: 'file' }))],
     };
   }
 

@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const checkApiKey = (req, res, next) => {
-  const key = req.headers['x-api-key'] || req.query.api_key;
+  const key = req.headers['api-key'] || req.query.api_key;
+  
   if (key !== process.env.API_KEY) {
     return next({
       status: 'error',
@@ -13,14 +14,15 @@ export const checkApiKey = (req, res, next) => {
   }
   next();
 };
+import cors from 'cors';
 
-export const corsOptions = {
-  origin: (origin, callback) => {
-    console.log(origin);
-    if (process.env.FRONTEND_URL === origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+export const dynamicCors = (req,res, callback) => {
+  const allowedOrigin = process.env.FRONTEND_URL;
+  const queryOrigin = req.query.origin;
+  const originHeader = req.headers.origin;
+  if (originHeader === allowedOrigin || queryOrigin === allowedOrigin) {
+    callback(null);
+  } else {
+    callback(new Error('Not allowed by CORS'), { origin: false });
+  }
 };

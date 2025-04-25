@@ -6,11 +6,11 @@ import errorHandler from './middleware/errorHandler.js';
 import { join } from 'path';
 import { requestLogger, responseLogger } from './utils/logger.js';
 
-import { checkApiKey, corsOptions } from './middleware/middleware.js';
+import { checkApiKey, dynamicCors } from './middleware/middleware.js';
 
 const app = express();
 
-app.use(cors(corsOptions), checkApiKey);
+app.use(cors(),dynamicCors, checkApiKey);
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

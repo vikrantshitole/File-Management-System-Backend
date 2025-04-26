@@ -132,6 +132,15 @@ export const validateGetFolderHierarchy = (req, _, next) => {
       code: 'INVALID_DATE_PARAMETER',
     });
   }
+  if (date && new Date(date) > new Date().setHours(23, 59, 59, 999)) {
+    logger.warn('Invalid date parameter:', date);
+    return next({
+      status: 'error',
+      statusCode: 400,
+      message: 'Date should not be in the future.',
+      code: 'INVALID_DATE_PARAMETER',
+    });
+  }
 
   if (!sort_by) {
     logger.warn('Missing sort_by parameter');

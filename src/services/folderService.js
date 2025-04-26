@@ -172,14 +172,16 @@ export const checkParentFolderExists = async parent_id => {
   return existingParentFolder;
 };
 
-export const checkDuplicateFolderName = async (name, parent_id) => {
+export const checkDuplicateFolderName = async (name, parent_id, id = null) => {
+  let where = {
+    name,
+    parent_id,
+  };
+  if (id) {
+    where.id = { [Op.ne]: id };
+  }
   logger.debug(`Checking for duplicate folder name: ${name} in parent folder: ${parent_id}`);
-  const existingFolder = await Folder.findOne({
-    where: {
-      name,
-      parent_id,
-    },
-  });
+  const existingFolder = await Folder.findOne({ where });
 
   if (existingFolder) {
     throw new Error('A folder with this name already exists in the same location');
@@ -244,7 +246,9 @@ export async function getAllRootItems(options = {}) {
     if (date) {
       let dateCondition = new Date(date);
       dateCondition.setHours(0, 0, 0, 0);
-      whereConditions.push(`updated_at >= '${dateCondition.toISOString()}'`);
+      // Format date for MySQL DATETIME
+      const mysqlDate = dateCondition.toISOString().slice(0, 19).replace('T', ' ');
+      whereConditions.push(`updated_at >= '${mysqlDate}'`);
     }
 
     if (whereConditions.length > 0) {
@@ -253,29 +257,29 @@ export async function getAllRootItems(options = {}) {
 
     // Create temporary table with filters
     const createTempTableQuery = `
-CREATE TEMPORARY TABLE temp_folder_files_root (
-  id CHAR(36),
-  updated_at DATETIME,
-  type ENUM('folder', 'file')
-);
+      CREATE TEMPORARY TABLE temp_folder_files_root (
+        id CHAR(36),
+        updated_at DATETIME,
+        type ENUM('folder', 'file')
+      );
 
-INSERT INTO temp_folder_files_root (id, updated_at, type)
-SELECT 
-  f.id,
-  f.updated_at,
-  'folder' as type
-FROM folders f
-WHERE f.parent_id IS NULL
-${whereClause};
+      INSERT INTO temp_folder_files_root (id, updated_at, type)
+      SELECT 
+        f.id,
+        f.updated_at,
+        'folder' as type
+      FROM folders f
+      WHERE f.parent_id IS NULL
+      ${whereClause};
 
-INSERT INTO temp_folder_files_root (id, updated_at, type)
-SELECT 
-  fi.id,
-  fi.updated_at,
-  'file' as type
-FROM files fi
-WHERE fi.folder_id IS NULL
-${whereClause};
+      INSERT INTO temp_folder_files_root (id, updated_at, type)
+      SELECT 
+        fi.id,
+        fi.updated_at,
+        'file' as type
+      FROM files fi
+      WHERE fi.folder_id IS NULL
+      ${whereClause};
     `;
 
     logger.debug('Creating temporary table with filters');

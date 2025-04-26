@@ -126,7 +126,7 @@ export const updateFolderHandler = async (req, res, next) => {
     }
 
     logger.debug(`Checking for duplicate folder name: ${name}`);
-    await checkDuplicateFolderName(name, parent_id);
+    await checkDuplicateFolderName(name, parent_id, id);
 
     logger.debug(`Updating folder: ${id}`);
     // Update the folder

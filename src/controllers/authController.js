@@ -40,9 +40,9 @@ export const validateAuthToken = async (req, res, next) => {
     if (!validationResult.isValid) {
       return next({
         status: 'error',
-        statusCode: validationResult.code === 'TOKEN_EXPIRED' ? 401 : 403,
-        message: validationResult.error,
-        code: validationResult.code
+        statusCode: 401,
+        message: 'Invalid token',
+        code: 'INVALID_TOKEN',
       });
     }
 
@@ -53,8 +53,7 @@ export const validateAuthToken = async (req, res, next) => {
       data: {
         expiresAt: validationResult.expiresAt,
         decoded: validationResult.decoded,
-        code: validationResult.code
-      }
+      },
     });
   } catch (error) {
     logger.error('Error validating token:', error);
@@ -62,7 +61,7 @@ export const validateAuthToken = async (req, res, next) => {
       status: 'error',
       statusCode: 500,
       message: 'Error validating token',
-      code: 'TOKEN_VALIDATION_ERROR'
+      code: 'TOKEN_VALIDATION_ERROR',
     });
   }
 };

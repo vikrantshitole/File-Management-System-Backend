@@ -32,27 +32,54 @@ export const generateToken = () => {
 };
 
 /**
- * Verify a JWT token
+ * Verify JWT token and check API key
  * @param {string} token - JWT token to verify
- * @returns {Object} Decoded token payload
+ * @returns {Object} Verification result
  */
-export const verifyToken = token => {
+export const verifyToken = (token) => {
   try {
     if (!token) {
-      throw new Error('No token provided');
+      return {
+        isValid: false,
+        error: 'No token provided',
+        errorCode: 'TOKEN_MISSING'
+      };
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-
+    
+    // Check if API key matches
     if (decoded.api_key !== process.env.API_KEY) {
-      throw new Error('Invalid token');
+      return {
+        isValid: false,
+        error: 'Invalid API key in token',
+        errorCode: 'INVALID_API_KEY'
+      };
     }
 
     logger.info('JWT token verified successfully');
     return decoded;
   } catch (error) {
-    logger.error('Error verifying JWT token:', error);
-    throw new Error('Invalid token');
+    if (error.name === 'TokenExpiredError') {
+      return {
+        isValid: false,
+        error: 'Token has expired',
+        errorCode: 'TOKEN_EXPIRED',
+        expiredAt: new Date(error.expiredAt)
+      };
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return {
+        isValid: false,
+        error: 'Invalid token format',
+        errorCode: 'INVALID_TOKEN'
+      };
+    }
+    return {
+      isValid: false,
+      error: error.message,
+      errorCode: 'TOKEN_VERIFICATION_ERROR'
+    };
   }
 };
 
@@ -61,30 +88,52 @@ export const verifyToken = token => {
  * @param {string} token - JWT token to validate
  * @returns {Object} Validation result
  */
-export const validateToken = token => {
+export const validateToken = (token) => {
   try {
     if (!token) {
       return {
         isValid: false,
         error: 'No token provided',
+        errorCode: 'TOKEN_MISSING'
       };
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-
+    
+    // Check if API key matches
     if (decoded.api_key !== process.env.API_KEY) {
-      throw new Error('Invalid token');
+      return {
+        isValid: false,
+        error: 'Invalid API key in token',
+        errorCode: 'INVALID_API_KEY'
+      };
     }
 
     return {
       isValid: true,
       decoded,
-      expiresAt: new Date(decoded.exp * 1000),
+      expiresAt: new Date(decoded.exp * 1000)
     };
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return {
+        isValid: false,
+        error: 'Token has expired',
+        errorCode: 'TOKEN_EXPIRED',
+        expiredAt: new Date(error.expiredAt)
+      };
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return {
+        isValid: false,
+        error: 'Invalid token format',
+        errorCode: 'INVALID_TOKEN'
+      };
+    }
     return {
       isValid: false,
       error: error.message,
+      errorCode: 'TOKEN_VERIFICATION_ERROR'
     };
   }
 };

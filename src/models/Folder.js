@@ -124,10 +124,10 @@ Folder.init(
           const parent = await Folder.findByPk(folder.parent_id);
           folder.hierarchy_level = parent ? parent.hierarchy_level + 1 : 0;
           const path = (await parent?.hierarchyPath) || '';
-          folder.hierarchy_path = path ? `${path}/${folder.name}` : folder.name;
+          folder.hierarchy_path = path ? `${path},${folder.id}` : folder.id;
         } else {
           folder.hierarchy_level = 0;
-          folder.hierarchy_path = folder.name;
+          folder.hierarchy_path = folder.id;
         }
       },
     },

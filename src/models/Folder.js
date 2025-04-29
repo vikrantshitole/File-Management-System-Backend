@@ -31,7 +31,6 @@ class Folder extends Model {
       updated_at: folder.updated_at,
       parent_id: folder.parent_id,
       level: folder.hierarchy_level,
-      hierarchy_path: folder.hierarchy_path,
       path: folder.hierarchy_path,
       type: 'folder',
       children: [

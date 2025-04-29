@@ -3,22 +3,7 @@ import sequelize from '../config/sequelize.js';
 import File from './File.js';
 
 class Folder extends Model {
-  // Get all ancestors
-  async getAncestors() {
-    const ancestors = [];
-    let current = this;
-
-    while (current.parent_id) {
-      current = await Folder.findByPk(current.parent_id);
-      if (current) {
-        ancestors.push(current);
-      } else {
-        break;
-      }
-    }
-
-    return ancestors;
-  }
+  
 
   // Get all descendants
   async getDescendants() {
@@ -36,7 +21,6 @@ class Folder extends Model {
     if (!folder) return null;
 
     const children = await Promise.all(folder.children.map(child => child.getDescendants()));
-    let path = await folder.hierarchyPath;
 
     return {
       id: folder.id,
@@ -48,7 +32,7 @@ class Folder extends Model {
       parent_id: folder.parent_id,
       level: folder.hierarchy_level,
       hierarchy_path: folder.hierarchy_path,
-      path,
+      path: folder.hierarchy_path,
       type: 'folder',
       children: [
         ...children.filter(Boolean),
@@ -57,13 +41,6 @@ class Folder extends Model {
     };
   }
 
-  // Get hierarchy path
-  get hierarchyPath() {
-    return this.getAncestors().then(ancestors => {
-      const path = [...ancestors, this].map(folder => folder.id).join(',');
-      return path;
-    });
-  }
 }
 
 Folder.init(
@@ -123,7 +100,7 @@ Folder.init(
         if (folder.parent_id) {
           const parent = await Folder.findByPk(folder.parent_id);
           folder.hierarchy_level = parent ? parent.hierarchy_level + 1 : 0;
-          const path = (await parent?.hierarchyPath) || '';
+          const path = (parent?.hierarchy_path) || '';          
           folder.hierarchy_path = path ? `${path},${folder.id}` : folder.id;
         } else {
           folder.hierarchy_level = 0;
